@@ -1,0 +1,3622 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>绘境塔罗 - AI 画图占卜 Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #101116;
+      --panel: rgba(18, 19, 26, 0.9);
+      --panel-strong: rgba(27, 29, 37, 0.96);
+      --paper: #f4efe4;
+      --line: rgba(255, 255, 255, 0.16);
+      --line-strong: rgba(255, 255, 255, 0.28);
+      --text: #fbf6ea;
+      --muted: #c9c1b1;
+      --gold: #d8aa4e;
+      --teal: #57c5ba;
+      --rose: #dd6f8d;
+      --violet: #8b83d8;
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+      --radius: 8px;
+      font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(5, 6, 10, 0.64), rgba(5, 6, 10, 0.9)),
+        url("./tarot-table-bg.png") center / cover fixed,
+        #11131a;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: var(--teal);
+    }
+
+    .app {
+      width: min(1360px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 16px 0 30px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(216, 170, 78, 0.5);
+      background: rgba(16, 17, 22, 0.68);
+      box-shadow: inset 0 0 22px rgba(216, 170, 78, 0.15);
+      color: var(--gold);
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(22px, 2.1vw, 30px);
+      line-height: 1.05;
+      font-weight: 760;
+    }
+
+    .brand p,
+    .fineprint,
+    .muted {
+      color: var(--muted);
+    }
+
+    .brand p {
+      margin-top: 5px;
+      font-size: 14px;
+    }
+
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: rgba(16, 17, 22, 0.62);
+      border-radius: 999px;
+      white-space: nowrap;
+      color: var(--paper);
+      font-size: 14px;
+    }
+
+    .mode-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--rose);
+      border-radius: 50%;
+      box-shadow: 0 0 14px currentColor;
+    }
+
+    .mode-pill.is-live .mode-dot {
+      background: var(--teal);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(380px, 0.75fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .flow-map {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      width: fit-content;
+      max-width: 100%;
+      padding: 6px;
+      border: 1px solid var(--line);
+      background: rgba(16, 17, 22, 0.54);
+      border-radius: var(--radius);
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--muted);
+      border-radius: var(--radius);
+      text-align: left;
+      font-size: 13px;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+
+    .flow-step span {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--paper);
+      font-size: 12px;
+      flex: 0 0 auto;
+    }
+
+    .flow-step.is-active,
+    .flow-step.is-done {
+      color: var(--text);
+      border-color: rgba(216, 170, 78, 0.56);
+      background: rgba(216, 170, 78, 0.12);
+    }
+
+    .flow-step.is-active span {
+      color: #17120b;
+      border-color: transparent;
+      background: var(--gold);
+    }
+
+    .stage {
+      display: none;
+      min-width: 0;
+    }
+
+    .stage.is-active {
+      display: block;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.55fr);
+      gap: 14px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .reading-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.72fr);
+      gap: 14px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .home-panel,
+    .step-panel {
+      padding: 24px;
+      min-width: 0;
+    }
+
+    .home-panel {
+      min-height: 330px;
+      display: grid;
+      align-content: start;
+      gap: 18px;
+    }
+
+    .home-kicker,
+    .step-kicker {
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .home-title {
+      max-width: 720px;
+      font-size: clamp(27px, 4vw, 42px);
+      line-height: 1.08;
+      font-weight: 820;
+      overflow-wrap: anywhere;
+    }
+
+    .home-copy {
+      max-width: 680px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.62;
+      overflow-wrap: anywhere;
+    }
+
+    .home-steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .home-step {
+      min-height: 96px;
+      min-width: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.045);
+      border-radius: var(--radius);
+    }
+
+    .home-step strong {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--paper);
+      font-size: 15px;
+    }
+
+    .home-step p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .stage-header h2 {
+      margin-top: 5px;
+      font-size: clamp(22px, 2.3vw, 30px);
+      line-height: 1.12;
+    }
+
+    .stage-header p {
+      margin-top: 6px;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 720px;
+    }
+
+    .stage-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stage-actions .action-button {
+      min-width: 150px;
+    }
+
+    .stage-actions .primary {
+      width: auto;
+      min-width: 220px;
+    }
+
+    .draw-stage .studio,
+    .cards-stage .spread-panel {
+      padding: 20px;
+    }
+
+    .cards-stage .spread-panel {
+      min-height: 500px;
+    }
+
+    .depth-intro {
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .deck-hint {
+      grid-column: 1 / -1;
+      min-height: 142px;
+      display: grid;
+      place-items: center;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      border-radius: var(--radius);
+      text-align: center;
+      padding: 18px;
+    }
+
+    .reading-deck {
+      margin-top: 14px;
+    }
+
+    .reading-stage .deck {
+      grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    }
+
+    .reading-stage .tarot-card {
+      min-height: 156px;
+    }
+
+    .surface {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      border-radius: var(--radius);
+      min-width: 0;
+    }
+
+    .studio {
+      padding: 18px;
+    }
+
+    .oracle {
+      display: grid;
+      gap: 14px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .section-title h2 {
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .section-title p {
+      margin-top: 5px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .prompt-strip,
+    .segmented,
+    .toolbar,
+    .swatches,
+    .actions,
+    .followups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .prompt-strip {
+      margin-bottom: 14px;
+    }
+
+    .custom-topic {
+      display: grid;
+      grid-template-columns: minmax(116px, auto) minmax(180px, 280px);
+      align-items: center;
+      gap: 8px 10px;
+      margin: -2px 0 14px;
+      max-width: 520px;
+    }
+
+    .custom-topic-label {
+      color: var(--paper);
+      font-weight: 650;
+    }
+
+    .custom-topic-field {
+      position: relative;
+      min-width: 0;
+    }
+
+    .custom-topic-field input {
+      padding-right: 56px;
+    }
+
+    .topic-count {
+      position: absolute;
+      right: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .topic-help {
+      grid-column: 1 / -1;
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .topic-help.is-error {
+      color: #ffbdc6;
+    }
+
+    .custom-topic.is-active input {
+      border-color: rgba(216, 170, 78, 0.72);
+      box-shadow: 0 0 0 3px rgba(216, 170, 78, 0.12);
+    }
+
+    .chip,
+    .segmented button,
+    .action-button,
+    .icon-button {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border-radius: var(--radius);
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .chip {
+      min-height: 36px;
+      padding: 0 12px;
+      color: var(--muted);
+    }
+
+    .chip.is-active,
+    .segmented button.is-active {
+      color: var(--text);
+      border-color: rgba(216, 170, 78, 0.72);
+      background: rgba(216, 170, 78, 0.17);
+    }
+
+    .chip:hover,
+    .segmented button:hover,
+    .action-button:hover,
+    .icon-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+    }
+
+    .canvas-shell {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(216, 170, 78, 0.34);
+      background: #18191f;
+      border-radius: var(--radius);
+    }
+
+    .canvas-frame {
+      position: relative;
+      min-height: 500px;
+      padding: 14px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 470px;
+      touch-action: none;
+      background: var(--paper);
+      border-radius: 6px;
+      box-shadow: inset 0 0 0 1px rgba(16, 17, 22, 0.08);
+    }
+
+    .canvas-cue {
+      position: absolute;
+      left: 28px;
+      top: 26px;
+      max-width: min(470px, calc(100% - 56px));
+      padding: 10px 12px;
+      border: 1px solid rgba(16, 17, 22, 0.12);
+      background: rgba(244, 239, 228, 0.78);
+      color: #29251d;
+      border-radius: var(--radius);
+      pointer-events: none;
+      transition: opacity 180ms ease;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .canvas-cue.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .toolbar {
+      justify-content: space-between;
+      padding: 13px 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(16, 17, 22, 0.72);
+    }
+
+    .tool-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      color: var(--paper);
+      font-size: 19px;
+    }
+
+    .icon-button.is-active {
+      border-color: rgba(87, 197, 186, 0.75);
+      background: rgba(87, 197, 186, 0.15);
+    }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      background: var(--swatch);
+    }
+
+    .swatch.is-active {
+      border-color: var(--paper);
+      box-shadow: 0 0 0 3px rgba(216, 170, 78, 0.22);
+    }
+
+    .slider {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 118px;
+      accent-color: var(--gold);
+    }
+
+    .settings,
+    .spread-panel {
+      padding: 16px;
+    }
+
+    .reading-panel,
+    .chat-panel {
+      padding: 20px 22px;
+    }
+
+    details.settings summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+      cursor: pointer;
+      color: var(--paper);
+      font-weight: 650;
+    }
+
+    details.settings summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      background: rgba(3, 4, 7, 0.44);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 0 11px;
+      outline: none;
+    }
+
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      border-color: rgba(87, 197, 186, 0.72);
+      box-shadow: 0 0 0 3px rgba(87, 197, 186, 0.12);
+    }
+
+    .checkline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .checkline input {
+      accent-color: var(--gold);
+    }
+
+    .segmented {
+      margin: 12px 0;
+    }
+
+    .segmented button {
+      min-height: 36px;
+      padding: 0 11px;
+      color: var(--muted);
+    }
+
+    .action-button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      min-height: 43px;
+      padding: 0 15px;
+      font-weight: 720;
+    }
+
+    .action-button.primary {
+      width: 100%;
+      min-height: 50px;
+      color: #14110c;
+      border-color: rgba(216, 170, 78, 0.82);
+      background: linear-gradient(135deg, #e7c678, #d79253 54%, #c86b7b);
+      box-shadow: 0 12px 32px rgba(200, 107, 123, 0.22);
+    }
+
+    .stage-actions .action-button.primary {
+      width: auto;
+      flex: 1 1 220px;
+    }
+
+    .stage-actions .action-button.secondary {
+      flex: 1 1 150px;
+    }
+
+    .action-button.secondary {
+      color: var(--paper);
+      border-color: rgba(87, 197, 186, 0.38);
+      background: rgba(87, 197, 186, 0.1);
+    }
+
+    .action-button:disabled {
+      cursor: wait;
+      opacity: 0.68;
+      transform: none;
+    }
+
+    .deck {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .pick-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 11px 12px;
+      border: 1px solid rgba(87, 197, 186, 0.24);
+      background: rgba(87, 197, 186, 0.07);
+      color: var(--muted);
+      border-radius: var(--radius);
+      font-size: 14px;
+    }
+
+    .pick-deck {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .pick-card {
+      position: relative;
+      display: grid;
+      min-height: 150px;
+      place-items: center;
+      border: 1px solid rgba(216, 170, 78, 0.28);
+      background:
+        radial-gradient(circle at center, rgba(216, 170, 78, 0.2), transparent 36%),
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 8px),
+        #171923;
+      color: var(--gold);
+      border-radius: var(--radius);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    .pick-card::before {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border: 1px solid rgba(216, 170, 78, 0.28);
+      border-radius: 6px;
+      pointer-events: none;
+    }
+
+    .pick-card:hover:not(:disabled) {
+      transform: translateY(-3px);
+      border-color: rgba(216, 170, 78, 0.72);
+      box-shadow: 0 15px 32px rgba(0, 0, 0, 0.28), inset 0 0 28px rgba(216, 170, 78, 0.14);
+    }
+
+    .pick-card:disabled {
+      cursor: default;
+      opacity: 0.45;
+    }
+
+    .pick-card.is-picked {
+      color: #17120b;
+      border-color: rgba(87, 197, 186, 0.82);
+      background:
+        radial-gradient(circle at center, rgba(87, 197, 186, 0.28), transparent 40%),
+        linear-gradient(150deg, #f3cf7a, #db8d67 62%, #c66f85);
+      opacity: 1;
+    }
+
+    .pick-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(216, 170, 78, 0.45);
+      border-radius: 50%;
+      background: rgba(16, 17, 22, 0.42);
+      font-weight: 800;
+    }
+
+    .pick-card.is-picked .pick-mark {
+      border-color: rgba(16, 17, 22, 0.22);
+      background: rgba(255, 255, 255, 0.38);
+    }
+
+    .tarot-card {
+      min-height: 176px;
+      border: 1px solid rgba(216, 170, 78, 0.32);
+      background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+        #181923;
+      border-radius: var(--radius);
+      padding: 9px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tarot-card[data-mark="火"] {
+      border-color: rgba(221, 111, 141, 0.38);
+    }
+
+    .tarot-card[data-mark="水"] {
+      border-color: rgba(87, 197, 186, 0.4);
+    }
+
+    .tarot-card[data-mark="风"] {
+      border-color: rgba(139, 131, 216, 0.42);
+    }
+
+    .tarot-card[data-mark="土"] {
+      border-color: rgba(216, 170, 78, 0.42);
+    }
+
+    .tarot-card::before {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 6px;
+      pointer-events: none;
+    }
+
+    .card-sigil {
+      display: grid;
+      place-items: center;
+      width: 76px;
+      height: 76px;
+      margin: 10px auto 8px;
+      border: 1px solid rgba(216, 170, 78, 0.24);
+      background:
+        radial-gradient(circle, rgba(216, 170, 78, 0.17), transparent 56%),
+        repeating-conic-gradient(from 12deg, rgba(255, 255, 255, 0.06) 0deg 10deg, transparent 10deg 24deg);
+      color: var(--gold);
+      border-radius: 50%;
+      font-size: 30px;
+      font-weight: 800;
+      box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.18);
+    }
+
+    .card-position {
+      display: inline-flex;
+      max-width: 100%;
+      padding: 3px 7px;
+      border: 1px solid rgba(87, 197, 186, 0.28);
+      background: rgba(87, 197, 186, 0.08);
+      color: var(--teal);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .card-name {
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 750;
+    }
+
+    .card-keywords {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .card-keyword-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .card-keyword-row span {
+      padding: 3px 6px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      background: rgba(255, 255, 255, 0.045);
+      color: #efe7d9;
+      border-radius: 999px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .token-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 11px;
+      padding-top: 11px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .reading-panel {
+      min-height: 355px;
+    }
+
+    .reading-card-strip {
+      margin-bottom: 15px;
+      padding: 12px;
+      border: 1px solid rgba(216, 170, 78, 0.24);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .reading-card-strip header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .reading-card-strip h3 {
+      color: var(--paper);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .reading-card-strip p {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .reading-card-strip .action-button {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .reading-card-strip .reading-deck {
+      grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+      margin-top: 10px;
+    }
+
+    .reading-body {
+      display: grid;
+      gap: 14px;
+    }
+
+    .reading-hero {
+      padding: 14px 16px;
+      border: 1px solid rgba(216, 170, 78, 0.34);
+      background:
+        linear-gradient(135deg, rgba(216, 170, 78, 0.13), rgba(87, 197, 186, 0.07)),
+        rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius);
+    }
+
+    .reading-hero span {
+      display: inline-flex;
+      margin-bottom: 7px;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .reading-hero p {
+      color: var(--paper);
+      font-size: 16px;
+      line-height: 1.62;
+      font-weight: 680;
+    }
+
+    .reading-empty {
+      min-height: 230px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+
+    .reading-section {
+      border-left: 3px solid rgba(216, 170, 78, 0.72);
+      padding: 9px 0 9px 14px;
+    }
+
+    .reading-section h3 {
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: var(--gold);
+    }
+
+    .reading-section strong {
+      color: var(--paper);
+    }
+
+    .reading-section p,
+    .chat-bubble p {
+      color: #efe7d9;
+      font-size: 14px;
+      line-height: 1.64;
+    }
+
+    .reading-section.is-integrated,
+    .reading-section.is-advice {
+      display: grid;
+      gap: 10px;
+    }
+
+    .reading-bridge {
+      display: grid;
+      gap: 8px;
+    }
+
+    .reading-bridge p:first-child {
+      color: var(--paper);
+      font-weight: 680;
+    }
+
+    .advice-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .advice-card {
+      padding: 11px 12px;
+      border: 1px solid rgba(87, 197, 186, 0.2);
+      background: rgba(87, 197, 186, 0.06);
+      border-radius: var(--radius);
+    }
+
+    .advice-card b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--teal);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .advice-card p {
+      font-size: 13px;
+      line-height: 1.58;
+    }
+
+    .reading-meta-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .reading-list,
+    .conversation-list {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+      padding-left: 18px;
+      color: #efe7d9;
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .evidence-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 9px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .evidence-tags li {
+      max-width: 100%;
+      padding: 6px 9px;
+      border: 1px solid rgba(216, 170, 78, 0.22);
+      background: rgba(216, 170, 78, 0.07);
+      color: #efe7d9;
+      border-radius: var(--radius);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .symbol-callout {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 9px;
+      padding: 7px 10px;
+      border: 1px solid rgba(87, 197, 186, 0.3);
+      background: rgba(87, 197, 186, 0.08);
+      border-radius: var(--radius);
+    }
+
+    .symbol-callout span {
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .symbol-callout strong {
+      color: var(--paper);
+      font-size: 14px;
+    }
+
+    .conversation-list {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .conversation-list li {
+      padding: 9px 10px;
+      border: 1px solid rgba(87, 197, 186, 0.22);
+      background: rgba(87, 197, 186, 0.06);
+      border-radius: var(--radius);
+    }
+
+    .card-readings {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mini-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius);
+    }
+
+    .mini-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .mini-card-title {
+      color: var(--paper);
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .mini-card-position {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border: 1px solid rgba(87, 197, 186, 0.32);
+      background: rgba(87, 197, 186, 0.08);
+      color: var(--teal);
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .mini-card-note {
+      margin-bottom: 9px;
+      color: #efe7d9;
+      font-size: 14px;
+      line-height: 1.56;
+    }
+
+    .card-breakdown {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      color: #efe7d9;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .card-point {
+      padding: 9px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(3, 4, 7, 0.18);
+      border-radius: var(--radius);
+    }
+
+    .card-point b {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--teal);
+      font-weight: 760;
+    }
+
+    .reading-panel > .stage-actions {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .chat-panel {
+      position: sticky;
+      top: 12px;
+      display: grid;
+      grid-template-rows: auto auto auto minmax(260px, 1fr) auto auto;
+      gap: 12px;
+      min-height: min(760px, calc(100vh - 126px));
+    }
+
+    .chat-header h2 {
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .chat-header p {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .chat-context {
+      display: grid;
+      gap: 5px;
+      padding: 10px 11px;
+      border: 1px solid rgba(216, 170, 78, 0.28);
+      background: rgba(216, 170, 78, 0.08);
+      border-radius: var(--radius);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .chat-context span {
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .chat-context p {
+      color: var(--muted);
+    }
+
+    .chat-context strong {
+      color: var(--paper);
+      font-weight: 760;
+    }
+
+    .followups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chat-panel .followups .action-button {
+      min-height: 36px;
+      padding: 0 11px;
+      font-size: 13px;
+    }
+
+    .chat-stream {
+      min-height: 260px;
+      max-height: 560px;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      background: rgba(3, 4, 7, 0.22);
+      border-radius: var(--radius);
+    }
+
+    .chat-empty {
+      min-height: 180px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .chat-turn {
+      display: grid;
+      gap: 8px;
+    }
+
+    .chat-bubble {
+      max-width: 92%;
+      padding: 10px 11px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .chat-bubble.user {
+      justify-self: end;
+      border-color: rgba(216, 170, 78, 0.3);
+      background: rgba(216, 170, 78, 0.12);
+    }
+
+    .chat-bubble.assistant {
+      justify-self: start;
+      border-color: rgba(87, 197, 186, 0.25);
+      background: rgba(87, 197, 186, 0.07);
+    }
+
+    .chat-bubble span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .chat-bubble.user span {
+      color: var(--gold);
+    }
+
+    .chat-detail {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      color: #efe7d9;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .followup-ask {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .followup-ask .action-button {
+      min-width: 92px;
+    }
+
+    .fineprint {
+      margin-top: 14px;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1060px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .home-grid,
+      .reading-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .chat-panel {
+        position: static;
+        min-height: 520px;
+      }
+
+      .oracle {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+      }
+
+      .settings,
+      .spread-panel {
+        align-self: start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100vw - 20px, 720px);
+        padding-top: 14px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .oracle {
+        grid-template-columns: 1fr;
+      }
+
+      .studio {
+        padding: 12px;
+      }
+
+      .canvas-frame {
+        min-height: 420px;
+        padding: 10px;
+      }
+
+      canvas {
+        height: 392px;
+      }
+
+      .toolbar {
+        align-items: flex-start;
+      }
+
+      .flow-map {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+      }
+
+      .home-steps {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-step {
+        min-height: 42px;
+      }
+
+      .home-panel,
+      .step-panel {
+        padding: 17px;
+      }
+
+      .reading-panel {
+        padding: 17px;
+      }
+
+      .home-title {
+        font-size: 27px;
+        line-height: 1.12;
+        word-break: break-all;
+      }
+
+      .stage-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .custom-topic {
+        grid-template-columns: 1fr;
+        max-width: none;
+      }
+
+      .stage-actions .action-button,
+      .stage-actions .primary {
+        width: 100%;
+      }
+
+      .advice-cards,
+      .card-breakdown {
+        grid-template-columns: 1fr;
+      }
+
+      .followup-ask {
+        grid-template-columns: 1fr;
+      }
+
+      .card-breakdown {
+        grid-template-columns: 1fr;
+      }
+
+      .reading-card-strip header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <div>
+          <h1>绘境塔罗</h1>
+          <p>画一个符号，抽几张牌，让 AI 围绕图案和牌面解读。</p>
+        </div>
+      </div>
+      <div class="mode-pill" id="modePill"><span class="mode-dot" aria-hidden="true"></span><span id="modeText">离线演示</span></div>
+    </header>
+
+    <main class="flow" data-current-stage="draw">
+      <nav class="flow-map" aria-label="游戏进度">
+        <button class="flow-step is-done" data-go-stage="home"><span>0</span>设置</button>
+        <button class="flow-step is-active" data-go-stage="draw"><span>1</span>画图</button>
+        <button class="flow-step" data-go-stage="cards"><span>2</span>抽牌</button>
+        <button class="flow-step" data-go-stage="reading"><span>3</span>解读</button>
+      </nav>
+
+      <section class="stage stage-home" data-stage="home" aria-labelledby="homeTitle">
+        <div class="home-grid">
+          <section class="home-panel surface">
+            <div>
+              <div class="home-kicker">设置 · 可选 OpenRouter</div>
+              <h2 class="home-title" id="homeTitle">先放好 Key，再回到画图。</h2>
+              <p class="home-copy">不填 Key 也能离线演示；填入后会把你的画和抽牌结果发给 OpenRouter 模型，生成更贴合的解读。</p>
+            </div>
+
+            <div class="home-steps" aria-label="玩法步骤">
+              <div class="home-step">
+                <strong>1. 选方向</strong>
+                <p>从感情、婚姻、事业、学业等方向里选，也可以输入 10 个字以内的方向。</p>
+              </div>
+              <div class="home-step">
+                <strong>2. 画符号</strong>
+                <p>画箭头、花、门、结、路径都可以，重点是你的第一反应。</p>
+              </div>
+              <div class="home-step">
+                <strong>3. 点牌背</strong>
+                <p>自己点选牌背，AI 会把方向、图案和牌面合在一起解释。</p>
+              </div>
+            </div>
+
+            <button class="action-button primary" id="startFlowBtn">回到画图</button>
+          </section>
+
+          <details class="settings surface">
+            <summary>OpenRouter 设置 <span class="muted">BYOK</span></summary>
+            <div class="settings-grid">
+              <label>
+                API Key
+                <input id="apiKey" type="password" autocomplete="off" placeholder="sk-or-..." />
+              </label>
+              <label>
+                Model ID
+                <input id="modelId" type="text" value="qwen/qwen3-vl-8b-instruct" />
+              </label>
+              <div class="checkline">
+                <label class="checkline"><input id="rememberKey" type="checkbox" /> 只在本机保存 Key</label>
+                <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noreferrer">获取 OpenRouter Key</a>
+              </div>
+              <p class="fineprint">不填写 Key 时会使用离线演示，不消耗 token。填写后会把画布图片发送给 OpenRouter 模型生成个性化解读。</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="stage draw-stage is-active" data-stage="draw" aria-labelledby="drawingTitle">
+        <section class="studio surface">
+          <div class="stage-header">
+            <div>
+              <div class="step-kicker">第 1 步 · 画图</div>
+              <h2 id="drawingTitle">选一个方向，然后画下第一反应</h2>
+              <p id="intentCue">感情关系：画出靠近、疏远、犹豫或期待的位置。</p>
+            </div>
+            <button class="action-button secondary" data-go-stage="home">设置与说明</button>
+          </div>
+
+          <div class="prompt-strip" role="group" aria-label="咨询方向">
+            <button class="chip is-active" data-intent="感情关系">感情关系</button>
+            <button class="chip" data-intent="婚姻家庭">婚姻家庭</button>
+            <button class="chip" data-intent="事业发展">事业发展</button>
+            <button class="chip" data-intent="学业考试">学业考试</button>
+            <button class="chip" data-intent="财运规划">财运规划</button>
+            <button class="chip" data-intent="人际关系">人际关系</button>
+            <button class="chip" data-intent="自我成长">自我成长</button>
+            <button class="chip" data-intent="未来选择">未来选择</button>
+          </div>
+
+          <div class="custom-topic" id="customTopicBox">
+            <label class="custom-topic-label" for="customTopic">自定义方向</label>
+            <div class="custom-topic-field">
+              <input id="customTopic" type="text" maxlength="10" autocomplete="off" placeholder="不超过10个字" aria-describedby="topicHelp" />
+              <span class="topic-count" id="topicCount">0/10</span>
+            </div>
+            <p class="topic-help" id="topicHelp">例如：转行、复合、考研、买房。</p>
+          </div>
+
+          <div class="canvas-shell">
+            <div class="canvas-frame">
+              <canvas id="drawingCanvas" aria-label="绘画区域"></canvas>
+              <div class="canvas-cue" id="canvasCue">闭上眼想三秒：它像线、雾、门、结，还是一个空白？把第一反应留在这里。</div>
+            </div>
+
+            <div class="toolbar">
+              <div class="tool-group" aria-label="画笔工具">
+                <button class="icon-button" id="undoBtn" title="撤销" aria-label="撤销">↶</button>
+                <button class="icon-button" id="redoBtn" title="重做" aria-label="重做">↷</button>
+                <button class="icon-button" id="penBtn" title="画笔" aria-label="画笔">✎</button>
+                <button class="icon-button" id="eraserBtn" title="橡皮擦" aria-label="橡皮擦">⌫</button>
+                <button class="icon-button" id="clearBtn" title="清空画布" aria-label="清空画布">×</button>
+              </div>
+
+              <div class="tool-group">
+                <div class="swatches" role="group" aria-label="颜色">
+                  <button class="swatch is-active" data-color="#15110d" style="--swatch:#15110d" aria-label="墨色"></button>
+                  <button class="swatch" data-color="#b83b5e" style="--swatch:#b83b5e" aria-label="玫红"></button>
+                  <button class="swatch" data-color="#286b68" style="--swatch:#286b68" aria-label="深青"></button>
+                  <button class="swatch" data-color="#d39b3d" style="--swatch:#d39b3d" aria-label="金色"></button>
+                  <button class="swatch" data-color="#4d4f9f" style="--swatch:#4d4f9f" aria-label="紫蓝"></button>
+                </div>
+                <label class="slider" for="brushSize">粗细 <input id="brushSize" type="range" min="3" max="38" value="12" /></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="stage-actions">
+            <button class="action-button secondary" id="clearAndStayBtn">重新画</button>
+            <button class="action-button primary" id="toCardsBtn">去抽牌</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="stage cards-stage" data-stage="cards" aria-labelledby="spreadTitle">
+        <section class="spread-panel surface">
+          <div class="stage-header">
+            <div>
+              <div class="step-kicker">第 2 步 · 抽牌</div>
+              <h2 id="spreadTitle">先选深度，再点牌背</h2>
+              <p>按钮会告诉你要抽几张。选完牌后再生成解读。</p>
+            </div>
+            <button class="action-button secondary" data-go-stage="draw">回去改画</button>
+          </div>
+
+          <p class="depth-intro">真实塔罗会先洗牌，再由提问者抽出需要的牌。这里也一样：从下面的牌背里亲手点选。</p>
+
+          <div class="segmented" role="tablist" aria-label="解读深度">
+            <button data-spread="daily">1 张快速</button>
+            <button class="is-active" data-spread="mirror">3 张标准</button>
+            <button data-spread="crossroad">5 张深入</button>
+          </div>
+
+          <div class="pick-status">
+            <span id="pickText">请选择 3 张牌</span>
+            <span id="pickCount">0 / 3</span>
+          </div>
+          <div class="pick-deck" id="pickDeck" aria-label="可选牌背"></div>
+
+          <button class="action-button primary" id="readBtn" disabled>先选 3 张牌</button>
+          <div class="token-line">
+            <span id="usageText">等待你抽牌</span>
+            <span id="costText">token: 0</span>
+          </div>
+          <div class="deck" id="deck" aria-live="polite">
+            <div class="deck-hint">选够牌后，点击上方按钮翻开并解读。</div>
+          </div>
+        </section>
+      </section>
+
+      <section class="stage reading-stage" data-stage="reading" aria-labelledby="readingTitle">
+        <div class="reading-layout">
+          <section class="reading-panel surface" aria-labelledby="readingTitle">
+            <div class="section-title">
+              <div>
+                <h2 id="readingTitle">解读结果</h2>
+                <p id="statusText">准备好了。</p>
+              </div>
+            </div>
+
+            <div class="reading-card-strip">
+              <header>
+                <div>
+                  <h3>本局抽牌</h3>
+                  <p>保留你的画，只换这一次的牌。</p>
+                </div>
+                <button class="action-button secondary" data-go-stage="cards">重新抽牌</button>
+              </header>
+              <div class="deck reading-deck" id="readingDeck" aria-live="polite">
+                <div class="deck-hint">完成抽牌后会显示牌面。</div>
+              </div>
+            </div>
+
+            <div class="reading-body" id="readingBody">
+              <div class="reading-empty">你的画和牌会在这里合流。</div>
+            </div>
+
+            <div class="stage-actions">
+              <button class="action-button secondary" id="editDrawingBtn">回到画图</button>
+              <button class="action-button primary" id="restartBtn">重新开始一局</button>
+            </div>
+          </section>
+
+          <aside class="chat-panel surface" aria-labelledby="chatTitle">
+            <div class="chat-header">
+              <h2 id="chatTitle">沟通入口</h2>
+              <p>点一句开始追问，也可以直接输入自己的问题。</p>
+            </div>
+            <div class="chat-context" id="chatContext" aria-live="polite">
+              <span>本局参考</span>
+              <p>生成解读后，这里会固定显示图案和牌面。</p>
+            </div>
+            <div class="followups" id="followups" aria-label="继续追问">
+              <button class="action-button secondary" data-focus="我该怎么开口" disabled>我该怎么开口</button>
+              <button class="action-button secondary" data-focus="下一步行动" disabled>下一步行动</button>
+              <button class="action-button secondary" data-focus="最需要注意什么" disabled>最需要注意什么</button>
+            </div>
+            <div class="thread chat-stream" id="thread">
+              <div class="chat-empty">生成解读后，可以点上方问题，或在下方输入自己的追问。</div>
+            </div>
+            <div class="followup-ask">
+              <input id="followupInput" type="text" maxlength="48" placeholder="继续追问：我该怎么开口？" disabled />
+              <button class="action-button secondary" id="askFollowupBtn" disabled>继续问</button>
+            </div>
+
+            <p class="fineprint" id="boundaryNote">这是娱乐与自我反思体验，不构成心理诊断、治疗建议或命运承诺。若画面或解读触发强烈痛苦，请优先联系现实中可信赖的人或当地紧急援助。</p>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+    const PAPER = "#f4efe4";
+    const DEFAULT_MODEL = "qwen/qwen3-vl-8b-instruct";
+    const FALLBACK_MODELS = [
+      "qwen/qwen3-vl-8b-instruct",
+      "google/gemma-4-26b-a4b-it:free",
+      "openrouter/free"
+    ];
+
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+
+    const canvas = $("#drawingCanvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const cue = $("#canvasCue");
+    const readBtn = $("#readBtn");
+    const statusText = $("#statusText");
+    const usageText = $("#usageText");
+    const costText = $("#costText");
+    const readingBody = $("#readingBody");
+    const followups = $("#followups");
+    const chatContext = $("#chatContext");
+    const followupInput = $("#followupInput");
+    const askFollowupBtn = $("#askFollowupBtn");
+    const thread = $("#thread");
+    const boundaryNote = $("#boundaryNote");
+    const modePill = $("#modePill");
+    const modeText = $("#modeText");
+    const deckEl = $("#deck");
+    const readingDeckEl = $("#readingDeck");
+    const pickDeckEl = $("#pickDeck");
+    const pickText = $("#pickText");
+    const pickCount = $("#pickCount");
+    const flowEl = $(".flow");
+    const stages = $$(".stage");
+    const flowSteps = $$(".flow-step");
+    const customTopicBox = $("#customTopicBox");
+    const customTopic = $("#customTopic");
+    const topicCount = $("#topicCount");
+    const topicHelp = $("#topicHelp");
+
+    let brushColor = "#15110d";
+    let brushSize = 12;
+    let activeTool = "pen";
+    let drawing = false;
+    let lastPoint = null;
+    let activeStroke = null;
+    let drawnStrokes = [];
+    let undoStack = [];
+    let redoStack = [];
+    let selectedIntent = "感情关系";
+    let customTopicActive = false;
+    let selectedSpread = "mirror";
+    let currentCards = [];
+    let lastReading = null;
+    let lastImageData = null;
+    let lastDrawingProfile = null;
+    let preparedStats = null;
+    let preparedImageData = null;
+    let preparedProfile = null;
+    let hasUserDrawn = false;
+    let currentStage = "draw";
+    let candidateCards = [];
+    let pickedCards = [];
+
+    const spreads = {
+      daily: ["此刻"],
+      mirror: ["线索", "阴影", "出口"],
+      crossroad: ["当下", "阻力", "资源", "选择", "回声"]
+    };
+
+    const spreadLabels = {
+      daily: "快速一张牌",
+      mirror: "标准三张牌",
+      crossroad: "深入五张牌"
+    };
+
+    const DEFAULT_FOLLOWUPS = ["我该怎么开口", "下一步怎么做", "最需要注意什么", "给我具体步骤"];
+    const DEFAULT_BOUNDARY = "这是娱乐与自我反思体验，不构成心理诊断、治疗建议或命运承诺。若画面或解读触发强烈痛苦，请优先联系现实中可信赖的人或当地紧急援助。";
+
+    const majors = [
+      ["愚者", "The Fool", "开始,冒险,信任"],
+      ["魔术师", "The Magician", "意志,创造,显化"],
+      ["女祭司", "The High Priestess", "直觉,秘密,潜意识"],
+      ["皇后", "The Empress", "滋养,身体,丰盛"],
+      ["皇帝", "The Emperor", "结构,边界,秩序"],
+      ["教皇", "The Hierophant", "传统,学习,信念"],
+      ["恋人", "The Lovers", "关系,选择,一致"],
+      ["战车", "The Chariot", "推进,控制,方向"],
+      ["力量", "Strength", "温柔,勇气,自持"],
+      ["隐者", "The Hermit", "独处,寻找,内光"],
+      ["命运之轮", "Wheel of Fortune", "循环,转折,时机"],
+      ["正义", "Justice", "平衡,因果,判断"],
+      ["倒吊人", "The Hanged Man", "暂停,换角度,交托"],
+      ["死神", "Death", "结束,蜕变,释放"],
+      ["节制", "Temperance", "调和,耐心,疗愈"],
+      ["恶魔", "The Devil", "束缚,欲望,执念"],
+      ["塔", "The Tower", "崩解,真相,突变"],
+      ["星星", "The Star", "希望,修复,愿景"],
+      ["月亮", "The Moon", "迷雾,梦境,不安"],
+      ["太阳", "The Sun", "清晰,生命力,喜悦"],
+      ["审判", "Judgement", "召唤,复盘,觉醒"],
+      ["世界", "The World", "完成,整合,抵达"]
+    ];
+
+    const suitDefs = [
+      { zh: "权杖", en: "Wands", mark: "火", element: "行动", words: ["冲动", "热情", "企图", "突破"] },
+      { zh: "圣杯", en: "Cups", mark: "水", element: "情感", words: ["感受", "关系", "流动", "亲密"] },
+      { zh: "宝剑", en: "Swords", mark: "风", element: "思维", words: ["语言", "判断", "冲突", "清醒"] },
+      { zh: "星币", en: "Pentacles", mark: "土", element: "现实", words: ["身体", "资源", "稳定", "耐心"] }
+    ];
+
+    const rankDefs = [
+      ["Ace", "一", "种子"],
+      ["Two", "二", "对照"],
+      ["Three", "三", "扩展"],
+      ["Four", "四", "停驻"],
+      ["Five", "五", "摩擦"],
+      ["Six", "六", "修复"],
+      ["Seven", "七", "试探"],
+      ["Eight", "八", "练习"],
+      ["Nine", "九", "临界"],
+      ["Ten", "十", "完成"],
+      ["Page", "侍从", "消息"],
+      ["Knight", "骑士", "推进"],
+      ["Queen", "王后", "承载"],
+      ["King", "国王", "掌控"]
+    ];
+
+    const deck = [
+      ...majors.map((card, index) => ({
+        id: `major-${index}`,
+        zh: card[0],
+        en: card[1],
+        arcana: "大阿卡那",
+        mark: "✦",
+        keywords: card[2]
+      })),
+      ...suitDefs.flatMap((suit) => rankDefs.map((rank, index) => ({
+        id: `${suit.en}-${index}`,
+        zh: `${suit.zh}${rank[1]}`,
+        en: `${rank[0]} of ${suit.en}`,
+        arcana: "小阿卡那",
+        mark: suit.mark,
+        keywords: `${suit.element},${rank[2]},${suit.words[index % suit.words.length]}`
+      })))
+    ];
+
+    const majorMeanings = {
+      "愚者": "新的开始、试探和未知感",
+      "魔术师": "把想法变成行动的能力",
+      "女祭司": "还没说出口的直觉和隐情",
+      "皇后": "滋养、照顾和关系里的柔软资源",
+      "皇帝": "规则、责任、边界和掌控",
+      "教皇": "承诺、传统、家庭规则或共同信念",
+      "恋人": "关系选择、价值一致和亲密协商",
+      "战车": "推进方向、控制节奏和主动选择",
+      "力量": "温和但坚定地面对拉扯",
+      "隐者": "暂时后退、独处思考和找内在答案",
+      "命运之轮": "阶段变化、时机和循环",
+      "正义": "公平、事实、责任分配和清楚判断",
+      "倒吊人": "暂停、换角度和放下旧解法",
+      "死神": "结束旧模式，给新阶段腾位置",
+      "节制": "调和、修复、慢慢重新配比",
+      "恶魔": "执念、依赖、欲望和被困住的模式",
+      "塔": "突然看清、旧结构松动或冲突爆发",
+      "星星": "修复、希望和重新相信未来",
+      "月亮": "不确定、猜测、害怕和信息不清",
+      "太阳": "清晰、坦诚、公开和生命力",
+      "审判": "复盘、回应召唤和做阶段性决定",
+      "世界": "完成、整合和进入下一轮"
+    };
+
+    const suitMeanings = {
+      Wands: { label: "权杖", focus: "行动、动力、责任推进", question: "谁要先动、怎么动、动到哪里停" },
+      Cups: { label: "圣杯", focus: "情绪、亲密、照顾与回应", question: "感受有没有被看见，关系是否还能流动" },
+      Swords: { label: "宝剑", focus: "沟通、判断、边界和事实", question: "哪些话要说清，哪些想法需要被验证" },
+      Pentacles: { label: "星币", focus: "现实资源、时间、金钱和稳定", question: "现实条件能不能承托这件事" }
+    };
+
+    const rankMeanings = {
+      Ace: "一个新种子，事情刚有开端",
+      Two: "两边拉扯，需要对照和选择",
+      Three: "向外扩展，等待回应或看见初步成果",
+      Four: "稳定下来，也可能停得太久",
+      Five: "摩擦、冲突或竞争，需要降温",
+      Six: "修复、交换、重新找平衡",
+      Seven: "试探、防守、评估自己站在哪里",
+      Eight: "重复练习、加速推进，或决定离开旧状态",
+      Nine: "快到临界点，既有成果也有压力",
+      Ten: "累积到完成或过载，需要分担",
+      Page: "消息、学习、试探性的开口",
+      Knight: "带着方向行动，但要注意节奏",
+      Queen: "成熟承载、照顾感受和稳定能量",
+      King: "掌控局面、制定规则和承担责任"
+    };
+
+    const positionMeanings = {
+      "此刻": "现在最值得被看见的核心状态",
+      "线索": "已经露出来、可以先抓住的线头",
+      "阴影": "容易卡住、被回避或没有讲清的地方",
+      "出口": "下一步更适合怎么做",
+      "当下": "这件事目前的真实重心",
+      "阻力": "拖住局面的力量或误区",
+      "资源": "你可以借用的能力、条件或支持",
+      "选择": "需要主动决定的方向",
+      "回声": "这次选择可能留下的提醒"
+    };
+
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function cleanModelText(value) {
+      return String(value ?? "")
+        .replace(/```(?:json)?/gi, "")
+        .replace(/```/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function looksLikeRawPayload(value) {
+      const text = cleanModelText(value);
+      if (!text) return false;
+      if (/^[\[{]/.test(text) && /"(title|drawing|cards|visual_mirror|synthesis|answer)"/.test(text)) return true;
+      return /"(drawing|cards|visual_mirror)"\s*:/.test(text) && /"(advice|conversation|gentle_boundary)"\s*:/.test(text);
+    }
+
+    function displayText(value, fallback = "", maxLength = 520) {
+      const text = cleanModelText(value);
+      const safe = text && !looksLikeRawPayload(text) ? text : cleanModelText(fallback);
+      if (!safe) return "";
+      return safe.length > maxLength ? `${safe.slice(0, maxLength).trim()}...` : safe;
+    }
+
+    function displayList(items, fallback = []) {
+      const source = Array.isArray(items) ? items : fallback;
+      return source
+        .map((item) => displayText(item, "", 180))
+        .filter(Boolean)
+        .slice(0, 5);
+    }
+
+    function cardDigest(item) {
+      const card = displayText(item.card, "塔罗牌", 40);
+      const meaning = displayText(item.plain_meaning || item.reading, "这张牌提示你先看清当下最具体的线索。", 150);
+      const position = displayText(item.position_reading, "它说明这张牌在本局中的位置和作用。", 150);
+      const drawing = displayText(item.drawing_link, "它会把牌义和你画出的图案连接起来。", 170);
+      const reminder = displayText(item.reading, "先把感受落到一个可以尝试的小动作上。", 170);
+      return { card, meaning, position, drawing, reminder };
+    }
+
+    function symbolLabelFromText(...values) {
+      const text = values.map((value) => String(value || "")).join(" ");
+      const symbols = ["向上的箭头", "向下的箭头", "向左的箭头", "向右的箭头", "分叉路径", "心形", "房子", "波浪", "螺旋", "圆圈", "阶梯", "箭头", "花", "鱼", "山", "门", "V形"];
+      const found = symbols.find((item) => text.includes(item));
+      if (!found) return "抽象图案";
+      return found === "V形" ? "V 形路径" : found;
+    }
+
+    function setStatus(message) {
+      statusText.textContent = message;
+    }
+
+    function setMode(live) {
+      modePill.classList.toggle("is-live", live);
+      modeText.textContent = live ? "OpenRouter 在线" : "离线演示";
+    }
+
+    function countTopicChars(value) {
+      return Array.from(String(value || "").trim()).length;
+    }
+
+    function normalizeCustomTopic() {
+      if (!customTopic) return "";
+      const compact = customTopic.value.replace(/\s+/g, "");
+      const clipped = Array.from(compact).slice(0, 10).join("");
+      if (customTopic.value !== clipped) customTopic.value = clipped;
+      return clipped;
+    }
+
+    function currentTopic() {
+      const customValue = customTopic ? customTopic.value.trim() : "";
+      return customTopicActive ? customValue : selectedIntent;
+    }
+
+    function setTopicHelp(message, isError = false) {
+      if (!topicHelp) return;
+      topicHelp.textContent = message;
+      topicHelp.classList.toggle("is-error", isError);
+    }
+
+    function updateTopicCount() {
+      if (!topicCount || !customTopic) return;
+      topicCount.textContent = `${countTopicChars(customTopic.value)}/10`;
+    }
+
+    function topicIntro(topic) {
+      if (topic.includes("感情") || topic.includes("恋爱") || topic.includes("复合")) return "画出靠近、疏远、犹豫或期待的位置。";
+      if (topic.includes("婚姻") || topic.includes("家庭")) return "画出关系里的责任、边界、牵挂或沉默。";
+      if (topic.includes("事业") || topic.includes("工作") || topic.includes("转行")) return "画出推进、阻力、目标或你想抵达的位置。";
+      if (topic.includes("学业") || topic.includes("考试") || topic.includes("考研")) return "画出压力、目标、注意力或卡住的地方。";
+      if (topic.includes("财运") || topic.includes("钱") || topic.includes("买房")) return "画出流动、储存、缺口或安全感。";
+      if (topic.includes("人际") || topic.includes("朋友") || topic.includes("同事")) return "画出你和他人的距离、边界或连接方式。";
+      if (topic.includes("自我") || topic.includes("成长")) return "画出最近最想长出来、放下或修复的部分。";
+      if (topic.includes("未来") || topic.includes("选择")) return "画出两个方向，以及中间那段犹豫。";
+      return "画出这个方向里最明显的感受、阻力或期待。";
+    }
+
+    function applyTopic(topic, options = {}) {
+      customTopicActive = Boolean(options.custom);
+      if (!customTopicActive) selectedIntent = topic;
+      if (customTopicActive) selectedIntent = topic || "自定义方向";
+
+      $$(".chip[data-intent]").forEach((button) => {
+        button.classList.toggle("is-active", !customTopicActive && button.dataset.intent === selectedIntent);
+      });
+      if (customTopicBox) customTopicBox.classList.toggle("is-active", customTopicActive);
+      updateTopicCount();
+
+      const topicName = currentTopic();
+      if (!topicName) {
+        $("#intentCue").textContent = "输入一个不超过 10 个字的咨询方向，再把相关感受画出来。";
+        cue.textContent = "先给这次解读一个短方向，再画第一反应。";
+        return;
+      }
+      $("#intentCue").textContent = `${topicName}：${topicIntro(topicName)}`;
+      cue.textContent = cueForIntent(topicName);
+    }
+
+    function validateTopic() {
+      if (customTopicActive) normalizeCustomTopic();
+      updateTopicCount();
+      const topic = currentTopic();
+      if (!topic) {
+        setTopicHelp("请输入 1-10 个字的咨询方向。", true);
+        if (customTopic) customTopic.focus();
+        return false;
+      }
+      if (countTopicChars(topic) > 10) {
+        setTopicHelp("咨询方向不能超过 10 个字。", true);
+        if (customTopic) customTopic.focus();
+        return false;
+      }
+      selectedIntent = topic;
+      setTopicHelp(customTopicActive ? "已使用自定义方向。" : "例如：转行、复合、考研、买房。");
+      applyTopic(topic, { custom: customTopicActive });
+      return true;
+    }
+
+    function goStage(stage) {
+      const order = ["home", "draw", "cards", "reading"];
+      const previousStage = currentStage;
+      if (stage === "cards" && currentStage === "home" && !hasUserDrawn) {
+        stage = "draw";
+      }
+      if (stage === "cards" && currentStage === "draw" && !validateTopic()) {
+        stage = "draw";
+      }
+      if (stage === "reading" && !lastReading) {
+        stage = currentCards.length ? "cards" : "draw";
+      }
+      currentStage = stage;
+      flowEl.dataset.currentStage = stage;
+      stages.forEach((item) => item.classList.toggle("is-active", item.dataset.stage === stage));
+      flowSteps.forEach((button) => {
+        const step = button.dataset.goStage;
+        button.classList.toggle("is-active", step === stage);
+        button.classList.toggle("is-done", order.indexOf(step) < order.indexOf(stage));
+      });
+
+      if (stage === "draw") {
+        window.requestAnimationFrame(resizeCanvas);
+        window.setTimeout(resizeCanvas, 80);
+      }
+
+      if (stage === "cards" && (previousStage === "reading" || !candidateCards.length)) {
+        preparePickDeck(true);
+      }
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function resetReadingSurface() {
+      currentCards = [];
+      lastReading = null;
+      lastImageData = null;
+      lastDrawingProfile = null;
+      preparedStats = null;
+      preparedImageData = null;
+      preparedProfile = null;
+      candidateCards = [];
+      pickedCards = [];
+      deckEl.innerHTML = `<div class="deck-hint">选够牌后，点击上方按钮翻开并解读。</div>`;
+      readingDeckEl.innerHTML = `<div class="deck-hint">完成抽牌后会显示牌面。</div>`;
+      if (pickDeckEl) pickDeckEl.innerHTML = "";
+      updatePickState();
+      readingBody.innerHTML = `<div class="reading-empty">你的画和牌会在这里合流。</div>`;
+      resetChatStream();
+      usageText.textContent = "等待你抽牌";
+      costText.textContent = "token: 0";
+      setStatus("准备好了。");
+      if (boundaryNote) boundaryNote.textContent = DEFAULT_BOUNDARY;
+      $$("#followups button").forEach((button) => button.disabled = true);
+      if (followupInput) {
+        followupInput.value = "";
+        followupInput.disabled = true;
+      }
+      if (askFollowupBtn) askFollowupBtn.disabled = true;
+      setFollowupButtons(DEFAULT_FOLLOWUPS, true);
+    }
+
+    function resetSession() {
+      resetReadingSurface();
+      clearCanvas();
+      if (customTopic) customTopic.value = "";
+      setTopicHelp("例如：转行、复合、考研、买房。");
+      applyTopic("感情关系");
+      goStage("draw");
+    }
+
+    function fillPaper() {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = PAPER;
+      ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      ctx.restore();
+    }
+
+    function resizeCanvas() {
+      const oldImage = canvas.width ? canvas.toDataURL("image/png") : null;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fillPaper();
+
+      if (oldImage) {
+        const image = new Image();
+        image.onload = () => {
+          ctx.drawImage(image, 0, 0, rect.width, rect.height);
+          pushUndo();
+        };
+        image.src = oldImage;
+      } else {
+        pushUndo();
+      }
+    }
+
+    function pushUndo() {
+      undoStack.push(canvas.toDataURL("image/png"));
+      if (undoStack.length > 28) undoStack.shift();
+      redoStack = [];
+    }
+
+    function restoreSnapshot(dataUrl) {
+      const image = new Image();
+      image.onload = () => {
+        fillPaper();
+        ctx.drawImage(image, 0, 0, canvas.clientWidth, canvas.clientHeight);
+        updateCue();
+      };
+      image.src = dataUrl;
+    }
+
+    function undo() {
+      if (undoStack.length <= 1) return;
+      redoStack.push(undoStack.pop());
+      if (drawnStrokes.length) drawnStrokes.pop();
+      restoreSnapshot(undoStack[undoStack.length - 1]);
+    }
+
+    function redo() {
+      if (!redoStack.length) return;
+      const snapshot = redoStack.pop();
+      undoStack.push(snapshot);
+      restoreSnapshot(snapshot);
+    }
+
+    function clearCanvas() {
+      hasUserDrawn = false;
+      preparedStats = null;
+      preparedImageData = null;
+      preparedProfile = null;
+      drawnStrokes = [];
+      activeStroke = null;
+      fillPaper();
+      pushUndo();
+      updateCue();
+      setStatus("画布已清空。");
+    }
+
+    function getPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+    }
+
+    function startStroke(event) {
+      drawing = true;
+      hasUserDrawn = true;
+      preparedStats = null;
+      preparedImageData = null;
+      preparedProfile = null;
+      cue.classList.add("is-hidden");
+      lastPoint = getPoint(event);
+      activeStroke = activeTool === "pen" ? {
+        color: brushColor,
+        size: brushSize,
+        points: [lastPoint]
+      } : null;
+      canvas.setPointerCapture(event.pointerId);
+      drawLine(lastPoint, lastPoint);
+    }
+
+    function moveStroke(event) {
+      if (!drawing) return;
+      const point = getPoint(event);
+      drawLine(lastPoint, point);
+      if (activeStroke) activeStroke.points.push(point);
+      lastPoint = point;
+    }
+
+    function endStroke(event) {
+      if (!drawing) return;
+      drawing = false;
+      lastPoint = null;
+      canvas.releasePointerCapture(event.pointerId);
+      if (activeStroke && activeStroke.points.length) {
+        drawnStrokes.push(activeStroke);
+      }
+      activeStroke = null;
+      pushUndo();
+      updateCue();
+    }
+
+    function drawLine(from, to) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = brushSize;
+      ctx.strokeStyle = activeTool === "eraser" ? PAPER : brushColor;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function getDrawingStats() {
+      if (!canvas.width || !canvas.height) {
+        return {
+          density: 0,
+          centerX: 0.5,
+          centerY: 0.5,
+          spreadX: 0,
+          spreadY: 0,
+          dominantZone: "居中",
+          warmRatio: 0,
+          coolRatio: 0,
+          darkRatio: 0,
+          colorEnergy: 0,
+          isBlank: true
+        };
+      }
+
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = image.data;
+      const step = Math.max(8, Math.round(Math.min(canvas.width, canvas.height) / 90));
+      const paper = { r: 244, g: 239, b: 228 };
+      let total = 0;
+      let ink = 0;
+      let sumX = 0;
+      let sumY = 0;
+      let minX = canvas.width;
+      let minY = canvas.height;
+      let maxX = 0;
+      let maxY = 0;
+      let warm = 0;
+      let cool = 0;
+      let dark = 0;
+      let colorEnergy = 0;
+
+      for (let y = 0; y < canvas.height; y += step) {
+        for (let x = 0; x < canvas.width; x += step) {
+          const index = (y * canvas.width + x) * 4;
+          const r = data[index];
+          const g = data[index + 1];
+          const b = data[index + 2];
+          const diff = Math.abs(r - paper.r) + Math.abs(g - paper.g) + Math.abs(b - paper.b);
+          total += 1;
+          if (diff > 58) {
+            ink += 1;
+            sumX += x;
+            sumY += y;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+            if (r > b + 28 || r > g + 28) warm += 1;
+            if (b > r + 18 || g > r + 18) cool += 1;
+            if ((r + g + b) / 3 < 90) dark += 1;
+            colorEnergy += Math.max(r, g, b) - Math.min(r, g, b);
+          }
+        }
+      }
+
+      const density = ink / Math.max(1, total);
+      const centerX = ink ? sumX / ink / canvas.width : 0.5;
+      const centerY = ink ? sumY / ink / canvas.height : 0.5;
+      const spreadX = ink ? (maxX - minX) / canvas.width : 0;
+      const spreadY = ink ? (maxY - minY) / canvas.height : 0;
+      const dominantZone = centerX < 0.42 ? "偏左" : centerX > 0.58 ? "偏右" : centerY < 0.42 ? "偏上" : centerY > 0.58 ? "偏下" : "居中";
+
+      return {
+        density,
+        centerX,
+        centerY,
+        spreadX,
+        spreadY,
+        dominantZone,
+        warmRatio: warm / Math.max(1, ink),
+        coolRatio: cool / Math.max(1, ink),
+        darkRatio: dark / Math.max(1, ink),
+        colorEnergy: colorEnergy / Math.max(1, ink),
+        isBlank: density < 0.002
+      };
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.hypot(dx, dy);
+    }
+
+    function boundsForPoints(points) {
+      const xs = points.map((point) => point.x);
+      const ys = points.map((point) => point.y);
+      return {
+        minX: Math.min(...xs),
+        minY: Math.min(...ys),
+        maxX: Math.max(...xs),
+        maxY: Math.max(...ys),
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys)
+      };
+    }
+
+    function simplifyPoints(points, minDistance) {
+      if (points.length <= 2) return points;
+      const simplified = [points[0]];
+      for (const point of points.slice(1, -1)) {
+        if (distance(point, simplified[simplified.length - 1]) >= minDistance) {
+          simplified.push(point);
+        }
+      }
+      simplified.push(points[points.length - 1]);
+      return simplified;
+    }
+
+    function regionLabel(point, width, height) {
+      const horizontal = point.x < width * 0.36 ? "左" : point.x > width * 0.64 ? "右" : "中";
+      const vertical = point.y < height * 0.36 ? "上" : point.y > height * 0.64 ? "下" : "部";
+      if (horizontal === "中" && vertical === "部") return "中心";
+      if (vertical === "部") return `${horizontal}侧`;
+      if (horizontal === "中") return `中${vertical}`;
+      return `${horizontal}${vertical}`;
+    }
+
+    function countTurns(points) {
+      let turns = 0;
+      for (let index = 1; index < points.length - 1; index += 1) {
+        const prev = points[index - 1];
+        const current = points[index];
+        const next = points[index + 1];
+        const a1 = Math.atan2(current.y - prev.y, current.x - prev.x);
+        const a2 = Math.atan2(next.y - current.y, next.x - current.x);
+        let diff = Math.abs(a2 - a1);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff > 0.7) turns += 1;
+      }
+      return turns;
+    }
+
+    function verticalPattern(points) {
+      const moves = [];
+      for (let index = 1; index < points.length; index += 1) {
+        const dy = points[index].y - points[index - 1].y;
+        if (Math.abs(dy) < 9) continue;
+        const move = dy > 0 ? "下" : "上";
+        if (moves[moves.length - 1] !== move) moves.push(move);
+      }
+      if (!moves.length) return "基本保持水平";
+      if (moves.join("") === "下上下") return "先下探、再抬起、最后又往下落";
+      if (moves.join("") === "上下上") return "先抬起、再下探、最后又向上";
+      if (moves.length >= 3) return `出现${moves.length - 1}次上下折返`;
+      if (moves[0] === "下") return "整体有向下落的趋势";
+      return "整体有向上抬的趋势";
+    }
+
+    function directionPhrase(start, end, bounds) {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const horizontal = Math.abs(dx) > Math.max(24, bounds.width * 0.28) ? (dx > 0 ? "向右" : "向左") : "";
+      const vertical = Math.abs(dy) > Math.max(18, bounds.height * 0.22) ? (dy > 0 ? "向下" : "向上") : "";
+      if (horizontal && vertical) return `${horizontal}${vertical}`;
+      return horizontal || vertical || "在原地打转";
+    }
+
+    function strokeLength(points) {
+      return points.reduce((sum, point, index) => index ? sum + distance(points[index - 1], point) : 0, 0);
+    }
+
+    function arrowDirectionFromVector(vector) {
+      const absX = Math.abs(vector.x);
+      const absY = Math.abs(vector.y);
+      if (absY > absX * 1.25) return vector.y < 0 ? "向上" : "向下";
+      if (absX > absY * 1.25) return vector.x > 0 ? "向右" : "向左";
+      if (vector.x > 0 && vector.y < 0) return "右上";
+      if (vector.x < 0 && vector.y < 0) return "左上";
+      if (vector.x > 0 && vector.y > 0) return "右下";
+      return "左下";
+    }
+
+    function detectArrowProfile(penStrokes, stats, bounds) {
+      const width = canvas.clientWidth || canvas.width || 1;
+      const height = canvas.clientHeight || canvas.height || 1;
+      const strokeInfos = penStrokes.map((stroke, index) => {
+        const points = stroke.points;
+        const length = strokeLength(points);
+        const start = points[0];
+        const end = points[points.length - 1];
+        return {
+          index,
+          points,
+          length,
+          start,
+          end,
+          simplified: simplifyPoints(points, Math.max(10, Math.max(bounds.width, bounds.height) / 9))
+        };
+      }).filter((stroke) => stroke.length > 10);
+
+      if (strokeInfos.length < 2) return null;
+      const maxLength = Math.max(...strokeInfos.map((stroke) => stroke.length));
+      const shaftCandidates = strokeInfos
+        .filter((stroke) => stroke.length >= maxLength * 0.42)
+        .sort((a, b) => b.length - a.length)
+        .slice(0, 3);
+      const radius = Math.max(24, Math.max(bounds.width, bounds.height) * 0.16);
+
+      let best = null;
+      for (const shaft of shaftCandidates) {
+        const endpoints = [
+          { tip: shaft.start, opposite: shaft.end },
+          { tip: shaft.end, opposite: shaft.start }
+        ];
+
+        for (const candidate of endpoints) {
+          const vector = {
+            x: candidate.tip.x - candidate.opposite.x,
+            y: candidate.tip.y - candidate.opposite.y
+          };
+          const shaftDistance = Math.hypot(vector.x, vector.y);
+          if (shaftDistance < Math.max(42, Math.max(bounds.width, bounds.height) * 0.22)) continue;
+          const dir = { x: vector.x / shaftDistance, y: vector.y / shaftDistance };
+          const bases = [];
+
+          for (const stroke of strokeInfos) {
+            if (stroke.index === shaft.index) continue;
+            const nearStart = distance(stroke.start, candidate.tip) <= radius;
+            const nearEnd = distance(stroke.end, candidate.tip) <= radius;
+            if (nearStart || nearEnd) {
+              bases.push(nearStart ? stroke.end : stroke.start);
+              continue;
+            }
+
+            const inner = stroke.simplified.slice(1, -1);
+            const hasTipTurn = inner.some((point) => distance(point, candidate.tip) <= radius);
+            if (hasTipTurn) {
+              bases.push(stroke.start, stroke.end);
+            }
+          }
+
+          if (bases.length < 2) continue;
+          const scoredBases = bases.map((base) => {
+            const fromTip = { x: base.x - candidate.tip.x, y: base.y - candidate.tip.y };
+            const projection = fromTip.x * dir.x + fromTip.y * dir.y;
+            const side = fromTip.x * -dir.y + fromTip.y * dir.x;
+            return { base, projection, side };
+          });
+          const behind = scoredBases.filter((item) => item.projection < -radius * 0.22);
+          const sided = scoredBases.filter((item) => Math.abs(item.side) > radius * 0.18);
+          const hasTwoSides = scoredBases.some((item) => item.side > radius * 0.18)
+            && scoredBases.some((item) => item.side < -radius * 0.18);
+          const score = behind.length + sided.length + (hasTwoSides ? 2 : 0);
+          if (score < 4) continue;
+
+          const direction = arrowDirectionFromVector(vector);
+          const directionText = direction.startsWith("向") ? direction : `指向${direction}`;
+          const tipRegion = regionLabel(candidate.tip, width, height);
+          const tailRegion = regionLabel(candidate.opposite, width, height);
+          const directionName = direction === "向上"
+            ? "向上的箭头"
+            : direction === "向下"
+              ? "向下的箭头"
+              : direction === "向左"
+                ? "向左的箭头"
+                : direction === "向右"
+                  ? "向右的箭头"
+                  : `${direction}方向的箭头`;
+          const profile = {
+            title: directionName,
+            summary: `我看见的是一个${directionName}：箭头头部在${tipRegion}，尾部在${tailRegion}，整体${directionText}。`,
+            evidence: [
+              `主干从${tailRegion}延伸到${tipRegion}，方向明确${directionText}。`,
+              `头部附近有${Math.min(bases.length, 3)}笔短斜线向两侧展开，这是箭头头部的结构。`,
+              `重心${stats.dominantZone}，但符号优先判断为“${directionName}”，不再把它拆成普通线条。`
+            ],
+            symbol: direction === "向上"
+              ? "它像一个上升、推进、抬头或突破的符号。"
+              : `它像一个${directionText}推进或指向的符号。`,
+            pattern: directionName,
+            direction
+          };
+          if (!best || score > best.score) best = { score, profile };
+        }
+      }
+
+      return best?.profile || null;
+    }
+
+    function drawingProfile(stats) {
+      const penStrokes = drawnStrokes
+        .map((stroke) => ({ ...stroke, points: stroke.points.filter(Boolean) }))
+        .filter((stroke) => stroke.points.length > 0);
+
+      if (stats.isBlank || !penStrokes.length) {
+        return {
+          title: "空白或极轻的图案",
+          summary: "我几乎看不到明确图形，这更像一次还没有落笔的停顿。",
+          evidence: ["画布留白非常多，暂时没有可稳定识别的形状。", "如果想让解读更贴近你，可以先画一个点、线或边界。"],
+          symbol: "空白本身可以当作暂时保留。",
+          pattern: "空白",
+          direction: "停顿"
+        };
+      }
+
+      const allPoints = penStrokes.flatMap((stroke) => stroke.points);
+      const bounds = boundsForPoints(allPoints);
+      const arrowProfile = detectArrowProfile(penStrokes, stats, bounds);
+      if (arrowProfile) return arrowProfile;
+      const longest = penStrokes.reduce((best, stroke) => {
+        const length = strokeLength(stroke.points);
+        return length > best.length ? { stroke, length } : best;
+      }, { stroke: penStrokes[0], length: 0 }).stroke;
+      const simplified = simplifyPoints(longest.points, Math.max(12, Math.max(bounds.width, bounds.height) / 7));
+      const start = simplified[0];
+      const end = simplified[simplified.length - 1];
+      const straightness = distance(start, end) / Math.max(1, strokeLength(longest.points));
+      const turns = countTurns(simplified);
+      const closed = distance(start, end) < Math.max(24, Math.max(bounds.width, bounds.height) * 0.18) && Math.max(bounds.width, bounds.height) > 40;
+      const width = canvas.clientWidth || canvas.width || 1;
+      const height = canvas.clientHeight || canvas.height || 1;
+      const startRegion = regionLabel(start, width, height);
+      const endRegion = regionLabel(end, width, height);
+      const direction = directionPhrase(start, end, bounds);
+      const pattern = verticalPattern(simplified);
+      const size = bounds.width > width * 0.55 ? "横向跨度很大" : bounds.width < width * 0.22 ? "横向很收束" : "横向跨度中等";
+      const heightPhrase = bounds.height > height * 0.45 ? "纵向起伏很明显" : bounds.height < height * 0.18 ? "纵向起伏较小" : "纵向起伏适中";
+      const pressure = stats.darkRatio > 0.55 ? "线条偏重、压得比较实" : "线条压力不算重";
+
+      let title = "一组自由线条";
+      if (closed) title = "近似闭合的轮廓";
+      else if (turns >= 2) title = "带多次折返的折线";
+      else if (turns === 1) title = "带明显拐点的路径";
+      else if (straightness > 0.84) title = "单向延伸的线段";
+      if (penStrokes.length > 1) title = `${title}，旁边还有${penStrokes.length - 1}笔补充`;
+
+      const summary = `我看见的是${title}：它从${startRegion}起笔，最后落到${endRegion}，整体${direction}，${pattern}。`;
+      return {
+        title,
+        summary,
+        evidence: [
+          `起点在${startRegion}，终点在${endRegion}，不是随机散点，而像一段有方向的路径。`,
+          `${size}，${heightPhrase}，中间有${turns}处明显转折。`,
+          `${pressure}，重心${stats.dominantZone}，说明这幅图的注意力主要压在这一区域。`
+        ],
+        symbol: turns >= 2 ? "它像一段走到一半又被迫改向的路。" : closed ? "它像一个边界或容器。" : "它像一个正在被推出去的动作。",
+        pattern,
+        direction
+      };
+    }
+
+    function updateCue() {
+      cue.classList.toggle("is-hidden", hasUserDrawn || !getDrawingStats().isBlank);
+    }
+
+    function exportCanvasForAI(maxEdge = 768) {
+      if (!canvas.width || !canvas.height) {
+        const blank = document.createElement("canvas");
+        blank.width = 768;
+        blank.height = 480;
+        const blankCtx = blank.getContext("2d");
+        blankCtx.fillStyle = PAPER;
+        blankCtx.fillRect(0, 0, blank.width, blank.height);
+        return blank.toDataURL("image/png");
+      }
+
+      const ratio = Math.min(1, maxEdge / Math.max(canvas.width, canvas.height));
+      const out = document.createElement("canvas");
+      out.width = Math.round(canvas.width * ratio);
+      out.height = Math.round(canvas.height * ratio);
+      const outCtx = out.getContext("2d");
+      outCtx.fillStyle = PAPER;
+      outCtx.fillRect(0, 0, out.width, out.height);
+      outCtx.drawImage(canvas, 0, 0, out.width, out.height);
+      return out.toDataURL("image/png");
+    }
+
+    function requiredCardCount() {
+      return spreads[selectedSpread].length;
+    }
+
+    function candidateCountForSpread() {
+      const required = requiredCardCount();
+      if (required <= 1) return 7;
+      if (required <= 3) return 9;
+      return 12;
+    }
+
+    function preparePickDeck(force = false) {
+      if (candidateCards.length && !force) {
+        renderPickDeck();
+        updatePickState();
+        return;
+      }
+
+      const pool = [...deck];
+      const count = candidateCountForSpread();
+      candidateCards = Array.from({ length: count }, (_, pickIndex) => {
+        const index = Math.floor(Math.random() * pool.length);
+        const card = pool.splice(index, 1)[0];
+        return {
+          ...card,
+          pickId: `${Date.now()}-${pickIndex}-${card.id}`,
+          reversed: Math.random() < 0.32
+        };
+      });
+
+      pickedCards = [];
+      currentCards = [];
+      deckEl.innerHTML = `<div class="deck-hint">从上面的牌背里选 ${requiredCardCount()} 张。选好后，这里会翻开牌面。</div>`;
+      readingDeckEl.innerHTML = `<div class="deck-hint">完成抽牌后会显示牌面。</div>`;
+      renderPickDeck();
+      updatePickState();
+    }
+
+    function renderPickDeck() {
+      const required = requiredCardCount();
+      pickDeckEl.innerHTML = candidateCards.map((card, index) => {
+        const pickedIndex = pickedCards.findIndex((item) => item.pickId === card.pickId);
+        const isPicked = pickedIndex >= 0;
+        const disabled = pickedCards.length >= required && !isPicked;
+        return `
+          <button class="pick-card${isPicked ? " is-picked" : ""}" data-pick-index="${index}" ${disabled ? "disabled" : ""} aria-label="${isPicked ? `已选第 ${pickedIndex + 1} 张` : "可选牌背"}">
+            <span class="pick-mark">${isPicked ? pickedIndex + 1 : "✦"}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function togglePick(index) {
+      const card = candidateCards[index];
+      if (!card) return;
+
+      const pickedIndex = pickedCards.findIndex((item) => item.pickId === card.pickId);
+      if (pickedIndex >= 0) {
+        pickedCards.splice(pickedIndex, 1);
+      } else if (pickedCards.length < requiredCardCount()) {
+        pickedCards.push(card);
+      }
+
+      renderPickDeck();
+      updatePickState();
+    }
+
+    function updatePickState() {
+      if (!pickText || !pickCount || !readBtn) return;
+      const required = requiredCardCount();
+      const picked = pickedCards.length;
+      pickText.textContent = picked >= required ? "牌已经选好，可以翻开了" : `请选择 ${required} 张牌`;
+      pickCount.textContent = `${picked} / ${required}`;
+      readBtn.disabled = picked < required;
+      readBtn.textContent = picked >= required ? "翻牌并解读" : `先选 ${required} 张牌`;
+    }
+
+    function selectedCardsWithPositions() {
+      const positions = spreads[selectedSpread];
+      return pickedCards.slice(0, positions.length).map((card, index) => ({
+        ...card,
+        position: positions[index]
+      }));
+    }
+
+    function cardLabel(card) {
+      return `${card.zh}${card.reversed ? "（逆位）" : "（正位）"}`;
+    }
+
+    function renderDeck(cards) {
+      const html = cards.map((card) => {
+        const keywords = String(card.keywords || "").split(",").filter(Boolean).slice(0, 2);
+        return `
+        <article class="tarot-card" data-mark="${escapeHTML(card.mark)}">
+          <div>
+            <div class="card-position">${escapeHTML(card.position)}</div>
+            <div class="card-sigil" aria-hidden="true">${escapeHTML(card.mark)}</div>
+          </div>
+          <div>
+            <div class="card-name">${escapeHTML(cardLabel(card))}</div>
+            <div class="card-keywords">${escapeHTML(card.arcana)} · ${escapeHTML(card.keywords)}</div>
+            <div class="card-keyword-row">${keywords.map((word) => `<span>${escapeHTML(word)}</span>`).join("")}</div>
+          </div>
+        </article>
+      `;
+      }).join("");
+      deckEl.innerHTML = html;
+      readingDeckEl.innerHTML = html;
+    }
+
+    function visualSentence(stats, profile = null) {
+      if (profile?.summary) return profile.summary;
+      if (stats.isBlank) return "画面几乎是空白，适合被理解为一种停顿、保留或还没准备好命名的感受。";
+      const density = stats.density > 0.18 ? "线条或色块占据很多空间" : stats.density > 0.06 ? "画面有清楚的痕迹" : "留白仍然很多";
+      const spread = stats.spreadX > 0.7 || stats.spreadY > 0.7 ? "延展范围较大" : stats.spreadX < 0.28 && stats.spreadY < 0.28 ? "集中在一个小区域" : "分布比较克制";
+      const color = stats.warmRatio > stats.coolRatio + 0.18 ? "暖色更明显" : stats.coolRatio > stats.warmRatio + 0.18 ? "冷色更明显" : "色彩倾向较平衡";
+      const dark = stats.darkRatio > 0.55 ? "深色线条占比较高" : "明暗压力不重";
+      return `${density}，${spread}，重心${stats.dominantZone}，${color}，${dark}。`;
+    }
+
+    function topicLens(topic) {
+      if (topic.includes("婚姻") || topic.includes("家庭")) return "日常责任、亲密沟通、边界和家庭分工";
+      if (topic.includes("感情") || topic.includes("恋爱") || topic.includes("复合")) return "靠近、回应、信任和关系选择";
+      if (topic.includes("事业") || topic.includes("工作") || topic.includes("转行")) return "目标、执行、资源和职场沟通";
+      if (topic.includes("学业") || topic.includes("考试") || topic.includes("考研")) return "目标拆解、注意力、压力管理和复盘";
+      if (topic.includes("财运") || topic.includes("钱") || topic.includes("买房")) return "现金流、安全感、风险和现实规划";
+      if (topic.includes("人际") || topic.includes("朋友") || topic.includes("同事")) return "距离、边界、误会和互相支持";
+      if (topic.includes("自我") || topic.includes("成长")) return "自我理解、习惯更新和内在资源";
+      return "方向选择、现实约束和下一步行动";
+    }
+
+    function cardCore(card) {
+      if (card.arcana === "大阿卡那") {
+        return {
+          plain: majorMeanings[card.zh] || card.keywords,
+          suitFocus: "人生阶段和核心主题",
+          rankFocus: "这张牌本身就是主轴",
+          caution: card.reversed ? "逆位时更像能量被压住、延迟或用错方向。" : "正位时这股能量比较直接、容易被看见。"
+        };
+      }
+
+      const [rank, suit] = card.en.split(" of ");
+      const suitInfo = suitMeanings[suit] || { label: card.zh.slice(0, 2), focus: card.keywords, question: "这件事现在最需要被看见的面向" };
+      return {
+        plain: `${suitInfo.label}看${suitInfo.focus}；${rankMeanings[rank] || "这一阶段正在变化"}。`,
+        suitFocus: suitInfo.question,
+        rankFocus: rankMeanings[rank] || card.keywords,
+        caution: card.reversed ? "逆位表示这股能量不顺：可能被压住、用过头，或方向需要调整。" : "正位表示这股能量可以被正面使用。"
+      };
+    }
+
+    function cardInterpretation(card, topic, profile) {
+      const core = cardCore(card);
+      const position = positionMeanings[card.position] || "这个位置说明它在牌阵中的作用";
+      const drawingLink = profile?.summary
+        ? `${profile.title}里的“${profile.pattern}”和这张牌相连：它提示${topic}不是抽象问题，而是已经出现了一个可追踪的走向。`
+        : `这张牌把${topic}从抽象感受拉回一个可观察的线索。`;
+      const reading = `${card.position}位先看“${position}”。${cardLabel(card)}的白话意思是：${core.plain}${core.caution}放到${topic}里，它在问：${core.suitFocus}。`;
+      return {
+        position: card.position,
+        card: cardLabel(card),
+        plain_meaning: core.plain,
+        position_reading: `${position}。${core.caution}`,
+        drawing_link: drawingLink,
+        reading
+      };
+    }
+
+    function buildAdvice(topic, cards, profile) {
+      const exit = cards[cards.length - 1];
+      const exitCore = exit ? cardCore(exit) : null;
+      return [
+        `先把${topic}缩成一个能沟通的小问题，不要一次解决整段关系或整件事；这样比较容易得到真实反馈。`,
+        profile?.title ? `把图案里的“${profile.title}”当作提醒：先处理最明显的转折处，而不是整幅图；做完后观察自己是否更清楚下一步。` : `先补一笔最能代表${topic}的线，再看自己最想躲开的地方；这能帮助你把模糊感受变成可说出口的线索。`,
+        exit && exitCore ? `按${cardLabel(exit)}的方向行动：${exitCore.rankFocus}。今天只做一个能验证现实反应的小动作，观察对方、环境或自己身体的第一反应。` : `今天只做一个能验证现实反应的小动作，观察对方、环境或自己身体的第一反应。`,
+        `如果反馈不清楚，不要马上下结论；把问题再缩小一层，换成一句更具体的话、一个更小的动作，隔一天再复盘。`
+      ];
+    }
+
+    function buildConversation(topic, cards, profile) {
+      const exit = cards[cards.length - 1];
+      const lens = topicLens(topic);
+      return [
+        `我想先聊${topic}里一个具体点：${lens}，不是要马上定结论。`,
+        profile?.summary ? `我画出来的是“${profile.title}”，它让我感觉这件事有转折或卡住的地方，我想把这个地方讲清楚。` : `我现在还说不清全部感受，但我想先讲一个最小的真实感受。`,
+        exit ? `如果我们要往前一步，我希望先尝试一个小动作，方向可以参考${cardLabel(exit)}：${cardCore(exit).rankFocus}。` : `如果我们要往前一步，我希望先尝试一个小动作。`
+      ];
+    }
+
+    function buildFollowups(topic, cards) {
+      const exit = cards[cards.length - 1];
+      return [
+        "图案哪里最关键",
+        exit ? `${exit.zh}怎么行动` : "下一步怎么做",
+        topic.includes("婚姻") || topic.includes("感情") ? "我该怎么开口" : "怎么落到现实",
+        "再给我具体步骤"
+      ];
+    }
+
+    function compactReadingContext() {
+      const source = lastReading || {};
+      const drawing = source.drawing || source.drawing_seen || {};
+      const summary = displayText(drawing.summary || source.title, "", 120);
+      const symbol = displayText(drawing.symbol, "", 140);
+      const visualMirror = displayText(source.visual_mirror, "", 160);
+      return {
+        topic: currentTopic() || selectedIntent,
+        drawing: symbolLabelFromText(summary, source.title, symbol, visualMirror),
+        cards: currentCards.map(cardLabel),
+        key_reading: displayText(source.synthesis || source.takeaway || source.title, "", 240),
+        advice: displayList(source.advice, source.action ? [source.action] : []).slice(0, 2)
+      };
+    }
+
+    function buildPrompt(stats, cards, followupFocus = "", profile = drawingProfile(stats)) {
+      const topic = currentTopic() || selectedIntent;
+      const cardText = cards.map((card) => `${card.position}: ${cardLabel(card)} / ${card.en} / 关键词:${card.keywords}`).join("\n");
+      const outputShape = followupFocus
+        ? `只返回 JSON：{"answer":"第一句直接回答用户追问，像正常聊天，不要开头复述图案或牌面","micro_practice":"一个可选的30秒小动作","card_echo":"可选，仅当牌面确实补充关键线索时一句话，否则留空","next_questions":["可继续追问的问题"]}`
+        : `只返回 JSON：{"title":"标题","takeaway":"一句综合判断","drawing":{"summary":"我看见的具体图案","evidence":["可见证据"],"symbol":"象征解释"},"visual_mirror":"图案和咨询方向结合后的镜像，不要单独解读图案","cards":[{"position":"牌位","card":"牌名","plain_meaning":"白话牌义","position_reading":"这个牌位怎么读","drawing_link":"这张牌如何连接图案","reading":"图案、牌位和咨询方向的整合解读"}],"synthesis":"把图案、咨询方向和全部牌面合在一起的综合解读","advice":["4-5条深入建议，每条包含行动、原因或观察信号"],"conversation":["可以怎么开口或继续沟通"],"followups":["继续追问入口"],"gentle_boundary":"边界提醒"}`;
+
+      return [
+        `玩家选择的咨询方向：${topic}。`,
+        "玩家没有输入文字问题，而是用画面表达这个方向下的困扰、期待或感受。",
+        `本地图案画像：${JSON.stringify(profile)}`,
+        `本地画面统计：${visualSentence(stats, profile)}`,
+        `解读深度：${spreadLabels[selectedSpread] || selectedSpread}`,
+        `抽到的牌：\n${cardText}`,
+        followupFocus ? `这次继续追问的焦点：${followupFocus}。本局固定参考（不要在回答里逐条复述）：${JSON.stringify(compactReadingContext())}` : "",
+        followupFocus ? "继续追问时，右侧已经固定展示本局图案和牌面；你要像正常聊天一样回答用户当前问题。第一句必须直接回应问题，例如“可以先这样说：……”“先做这一步：……”。不要用“你画的是……”“牌面显示……”“牌面回声……”开头，也不要重复牌名；只有当图案或牌面能补充关键判断时才轻轻引用一句。" : "",
+        "重要：本地图案画像和画面统计只是辅助参考，不能替代你对图片的视觉判断。如果图片看起来像一个常见图案，而统计文字只说“闭合轮廓、路径、转折”，请以图片视觉为准，直接说出常见图案名。",
+        "请先直接观察图片并优先识别常见符号：箭头、花、心形、房子、门、山、波浪、圆圈、螺旋、叉、阶梯、分叉路径等。如果像箭头，必须直接说“向上的箭头/向下的箭头/向左的箭头/向右的箭头”；如果像花、房子、心形、波浪、螺旋，也必须先直接说出这个图案名，不要先拆成普通线条结构。只有识别不到明确符号时，才描述方向、转折、空白和重心。",
+        "输出里的 drawing.summary 必须用一句自然语言说明你看到的图案，并尽量包含图案名，例如“我看见的是一朵花”“我看见的是一间房子”“我看见的是几道波浪”。不要只写几何统计。",
+        "请结合咨询方向、玩家画面和塔罗牌阵进行象征性解读。必须围绕玩家选择的咨询方向，不要泛泛而谈；不要把图案单独作为一个段落解读，要把图案和牌面放在同一句逻辑里一起解释。",
+        "每张牌都要解释白话牌义、它在该牌位里的作用、它和图案的连接，以及用户能听懂的提醒。",
+        "建议要比解读更落地，至少给 4 条：行动、为什么这么做、观察什么反馈、可以怎么开口或下一步如何调整。不要只给笼统提醒。",
+        "必须给出后续沟通入口。沟通入口可以是能直接复制/照着说的话，也可以是下一轮追问按钮。",
+        "边界提醒只写进 gentle_boundary，不要放进 title、synthesis、advice 或 cards 的正文里。",
+        "绘画线索只能作为自我反思，不要声称能诊断心理疾病、人格、创伤或真实命运。",
+        "语气要有游戏主持人的仪式感，但不要恐吓、不要绝对化预测、不要输出医疗/法律/财务建议。",
+        outputShape
+      ].filter(Boolean).join("\n\n");
+    }
+
+    function modelCandidates(preferred) {
+      return [preferred, ...FALLBACK_MODELS]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .filter((item, index, list) => list.indexOf(item) === index);
+    }
+
+    function textReadingPayload(text, stats, cards, profile) {
+      const fallback = offlineReading(stats, cards, profile);
+      const clean = displayText(text, fallback.visual_mirror, 460);
+      return {
+        ...fallback,
+        title: "AI 在线解读",
+        visual_mirror: clean,
+        gentle_boundary: "这是 AI 在线生成的象征性解读。它适合用来启发自我反思，不构成心理诊断、治疗建议或命运承诺。"
+      };
+    }
+
+    function textFollowupPayload(text, focus, stats, cards, profile) {
+      const fallback = offlineFollowup(focus, stats, cards, profile);
+      const clean = displayText(text, fallback.answer, 360);
+      return {
+        ...fallback,
+        answer: clean
+      };
+    }
+
+    function normalizeReadingPayload(payload, fallback) {
+      const source = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+      const drawingSource = source.drawing || source.drawing_seen || {};
+      const fallbackCards = Array.isArray(fallback.cards) ? fallback.cards : [];
+      const sourceCards = Array.isArray(source.cards) ? source.cards : [];
+      const cards = fallbackCards.map((card, index) => ({
+        ...card,
+        ...(sourceCards[index] && typeof sourceCards[index] === "object" ? sourceCards[index] : {})
+      }));
+
+      return {
+        ...fallback,
+        ...source,
+        title: displayText(source.title, fallback.title, 80),
+        takeaway: displayText(source.takeaway, fallback.takeaway || fallback.title, 260),
+        drawing: {
+          ...fallback.drawing,
+          ...(drawingSource && typeof drawingSource === "object" ? drawingSource : {}),
+          summary: displayText(drawingSource.summary || source.drawing_summary, fallback.drawing.summary, 220),
+          evidence: displayList(drawingSource.evidence, fallback.drawing.evidence),
+          symbol: displayText(drawingSource.symbol || source.symbol, fallback.drawing.symbol, 240)
+        },
+        visual_mirror: displayText(source.visual_mirror || source.mirror, fallback.visual_mirror, 460),
+        cards: cards.length ? cards : fallbackCards,
+        synthesis: displayText(source.synthesis || source.summary, fallback.synthesis, 460),
+        advice: displayList(source.advice, fallback.advice),
+        conversation: displayList(source.conversation, fallback.conversation),
+        followups: displayList(source.followups || source.next_questions, fallback.followups),
+        gentle_boundary: displayText(source.gentle_boundary, fallback.gentle_boundary, 260)
+      };
+    }
+
+    function normalizeFollowupPayload(payload, fallback) {
+      const source = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+      return {
+        ...fallback,
+        ...source,
+        answer: displayText(source.answer, fallback.answer, 360),
+        micro_practice: displayText(source.micro_practice, fallback.micro_practice, 220),
+        card_echo: displayText(source.card_echo, fallback.card_echo, 220),
+        next_questions: displayList(source.next_questions, fallback.next_questions)
+      };
+    }
+
+    async function callOpenRouter({ imageData, stats, cards, followupFocus, profile }) {
+      const forceOffline = new URLSearchParams(location.search).has("offline");
+      const key = $("#apiKey").value.trim();
+      const preferredModel = $("#modelId").value.trim() || DEFAULT_MODEL;
+      if (forceOffline || !key) {
+        setMode(false);
+        return {
+          payload: followupFocus ? offlineFollowup(followupFocus, stats, cards, profile) : offlineReading(stats, cards, profile),
+          usage: null,
+          offline: true
+        };
+      }
+
+      setMode(true);
+      if ($("#rememberKey").checked) localStorage.setItem("tarot.openrouter.key", key);
+      localStorage.setItem("tarot.openrouter.model", preferredModel);
+
+      const system = [
+        "你是一个中文 AI 塔罗游戏主持人，融合塔罗叙事和投射式绘画反思。",
+        "重要边界：这不是心理测评、诊断或治疗。不要判断用户患有任何疾病，不要给人格标签，不要暗示画作能证明真实心理事实。",
+        "如果画面可能涉及自伤、伤害他人或强烈绝望，只能给出温和支持和寻求现实帮助的建议。",
+        "输出必须是可解析 JSON，不要 Markdown，不要代码块。"
+      ].join("\n");
+
+      const errors = [];
+      for (const model of modelCandidates(preferredModel)) {
+        const body = {
+          model,
+          messages: [
+            { role: "system", content: system },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: buildPrompt(stats, cards, followupFocus, profile) },
+                { type: "image_url", image_url: { url: imageData } }
+              ]
+            }
+          ],
+          temperature: 0.78,
+          max_tokens: followupFocus ? 780 : 2100,
+          response_format: { type: "json_object" }
+        };
+
+        try {
+          const response = await fetch(OPENROUTER_URL, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${key}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": location.origin === "null" ? "https://local-tarot-drawing.demo" : location.href,
+              "X-Title": "AI Tarot Drawing Demo"
+            },
+            body: JSON.stringify(body)
+          });
+
+          const textBody = await response.text();
+          if (!response.ok) {
+            errors.push(`${model}: HTTP ${response.status} ${textBody.slice(0, 180)}`);
+            continue;
+          }
+
+          const data = JSON.parse(textBody);
+          if (data.error) {
+            errors.push(`${model}: ${data.error.code || "error"} ${data.error.message || "provider error"}`);
+            continue;
+          }
+
+          const raw = data?.choices?.[0]?.message?.content;
+          const text = Array.isArray(raw) ? raw.map((part) => part.text || "").join("") : String(raw || "");
+          const fallbackPayload = followupFocus ? offlineFollowup(followupFocus, stats, cards, profile) : offlineReading(stats, cards, profile);
+          const parsedPayload = followupFocus
+            ? parseJsonPayload(text, textFollowupPayload(text, followupFocus, stats, cards, profile))
+            : parseJsonPayload(text, textReadingPayload(text, stats, cards, profile));
+          const payload = followupFocus
+            ? normalizeFollowupPayload(parsedPayload, fallbackPayload)
+            : normalizeReadingPayload(parsedPayload, fallbackPayload);
+          if (model !== preferredModel) {
+            $("#modelId").value = model;
+            localStorage.setItem("tarot.openrouter.model", model);
+          }
+          return {
+            payload,
+            usage: data.usage || null,
+            offline: false,
+            model
+          };
+        } catch (error) {
+          errors.push(`${model}: ${error.message || String(error)}`);
+        }
+      }
+
+      throw new Error(`OpenRouter 调用失败：${errors.join(" | ").slice(0, 700)}`);
+    }
+
+    function parseJsonPayload(text, fallbackPayload = null) {
+      const source = cleanModelText(text);
+      const candidates = [source];
+      const fenced = String(text || "").match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fenced?.[1]) candidates.unshift(fenced[1].trim());
+      const starts = [...source.matchAll(/[\[{]/g)].map((match) => match.index);
+      starts.forEach((start) => {
+        const open = source[start];
+        const close = open === "{" ? "}" : "]";
+        let depth = 0;
+        let inString = false;
+        let escaping = false;
+        for (let index = start; index < source.length; index += 1) {
+          const char = source[index];
+          if (escaping) {
+            escaping = false;
+            continue;
+          }
+          if (char === "\\") {
+            escaping = true;
+            continue;
+          }
+          if (char === "\"") {
+            inString = !inString;
+            continue;
+          }
+          if (inString) continue;
+          if (char === open) depth += 1;
+          if (char === close) depth -= 1;
+          if (depth === 0) {
+            candidates.push(source.slice(start, index + 1));
+            break;
+          }
+        }
+      });
+
+      for (const candidate of candidates) {
+        if (!candidate) continue;
+        try {
+          const parsed = JSON.parse(candidate);
+          if (typeof parsed === "string") {
+            try {
+              return JSON.parse(parsed);
+            } catch (stringError) {
+              if (fallbackPayload) return fallbackPayload;
+              return textReadingPayload(parsed, preparedStats || getDrawingStats(), currentCards, lastDrawingProfile || preparedProfile);
+            }
+          }
+          return parsed;
+        } catch (error) {
+          // Try the next candidate before falling back to natural-language handling.
+        }
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            return JSON.parse(match[0]);
+          } catch (innerError) {
+            if (fallbackPayload) return fallbackPayload;
+            throw innerError;
+          }
+        }
+        if (fallbackPayload) return fallbackPayload;
+        throw error;
+      }
+    }
+
+    function offlineReading(stats, cards, profile = drawingProfile(stats)) {
+      const topic = currentTopic() || selectedIntent;
+      const primary = cards[0];
+      const bridge = cards[1] || primary;
+      const exit = cards[cards.length - 1] || primary;
+      const cardReadings = cards.map((card) => cardInterpretation(card, topic, profile));
+      return {
+        title: `${topic}的镜面线索`,
+        takeaway: `${topic}这件事现在更像一个需要被拆小的转折点，而不是马上判定结果的终局。`,
+        drawing: {
+          summary: profile.summary,
+          evidence: profile.evidence,
+          symbol: profile.symbol
+        },
+        visual_mirror: `放到${topic}里，这个图案不像“随机线条”，更像${profile.symbol}${stats.isBlank ? "它提醒你先允许问题暂时没有形状。" : "它提醒你先抓住最明显的转折，而不是马上要一个最终答案。"}`,
+        cards: cardReadings,
+        synthesis: `围绕${topic}，这组牌从${cardLabel(primary)}开始，经由${cardLabel(bridge)}，最后落到${cardLabel(exit)}。连起来看，它不是在说“结果一定如何”，而是在说：图案里的${profile.pattern}已经指出一个变化点，牌面则把这个变化点拆成线索、卡点和下一步。`,
+        advice: buildAdvice(topic, cards, profile),
+        conversation: buildConversation(topic, cards, profile),
+        followups: buildFollowups(topic, cards),
+        action: buildAdvice(topic, cards, profile).join(" "),
+        gentle_boundary: "这是一次象征性娱乐解读，适合用来整理感受和行动线索，不构成心理诊断、治疗建议或命运承诺。"
+      };
+    }
+
+    function offlineFollowup(focus, stats, cards, profile = drawingProfile(stats)) {
+      const topic = currentTopic() || selectedIntent;
+      const card = cards[Math.floor(Math.random() * Math.max(1, cards.length))] || currentCards[0];
+      const core = card ? cardCore(card) : null;
+      const focusText = displayText(focus, "这个问题", 36);
+      return {
+        answer: `可以。把“${focusText}”先缩成一个今天能处理的小问题：你真正想确认的是哪一个反应，而不是整件事的最终结论。放到${topic}里，先做能验证现实反馈的一步，再决定要不要继续推进。`,
+        micro_practice: stats.isBlank ? `在画布中心为${topic}画一个点，停三次呼吸。` : `圈出画里最像“转折”的地方，写一句：我真正想确认的是____。`,
+        card_echo: card ? `${card.position}位可参考${cardLabel(card)}：${core ? core.rankFocus : card.keywords.split(",").slice(0, 2).join(" / ")}。` : "",
+        next_questions: buildFollowups(topic, cards)
+      };
+    }
+
+    function listHTML(items, className = "reading-list") {
+      if (!Array.isArray(items) || !items.length) return "";
+      return `<ul class="${className}">${items.map((item) => `<li>${escapeHTML(item)}</li>`).join("")}</ul>`;
+    }
+
+    function displayAdviceItems(items, fallback = []) {
+      const source = Array.isArray(items) ? items : fallback;
+      return source
+        .map((item) => displayText(item, "", 260))
+        .filter(Boolean)
+        .slice(0, 5);
+    }
+
+    function tagListHTML(items) {
+      if (!Array.isArray(items) || !items.length) return "";
+      return `<ul class="evidence-tags">${items.slice(0, 2).map((item) => `<li>${escapeHTML(displayText(item, "", 90))}</li>`).join("")}</ul>`;
+    }
+
+    function adviceCardsHTML(advice, conversation, cards, topic, symbolLabel) {
+      const exit = cards[cards.length - 1];
+      const exitCore = exit ? cardCore(exit) : null;
+      const talkLine = conversation[0] || `先把${topic}说成一个具体请求，而不是一次性要结论。`;
+      const entries = [
+        {
+          title: "先定问题",
+          body: advice[0] || `把${topic}缩小成一个今天能沟通、能验证的小问题。${symbolLabel ? `把“${symbolLabel}”当作提醒：只处理最明显的一处，不急着解释全部。` : ""}`
+        },
+        {
+          title: "表达方式",
+          body: talkLine
+        },
+        {
+          title: "今天行动",
+          body: advice[1] || advice[2] || (exit && exitCore ? `参考${cardLabel(exit)}：${exitCore.rankFocus}。今天只做一个能看到现实反馈的小动作。` : "今天只做一个能看到现实反馈的小动作。")
+        },
+        {
+          title: "观察反馈",
+          body: advice[3] || `做完后只观察两个信号：现实有没有回应，你自己有没有更清楚下一步。没有反馈时，先把问题再缩小，不要立刻把它解释成失败。`
+        }
+      ];
+
+      return `
+        <div class="advice-cards">
+          ${entries.map((item) => `
+            <div class="advice-card">
+              <b>${escapeHTML(item.title)}</b>
+              <p>${escapeHTML(displayText(item.body, "", 260))}</p>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function setFollowupButtons(items = DEFAULT_FOLLOWUPS, disabled = false) {
+      const labels = (Array.isArray(items) && items.length ? items : DEFAULT_FOLLOWUPS)
+        .filter(Boolean)
+        .slice(0, 4);
+      followups.innerHTML = labels.map((label) => `
+        <button class="action-button secondary" data-focus="${escapeHTML(label)}" ${disabled ? "disabled" : ""}>${escapeHTML(label)}</button>
+      `).join("");
+    }
+
+    function defaultChatPrompts(topic = currentTopic() || selectedIntent) {
+      if (topic.includes("感情") || topic.includes("婚姻")) {
+        return ["我该怎么开口", "下一步怎么做", "最需要注意什么", "给我具体话术"];
+      }
+      if (topic.includes("学业") || topic.includes("考试")) {
+        return ["下一步怎么做", "最需要注意什么", "怎么提升效率", "给我具体步骤"];
+      }
+      if (topic.includes("事业") || topic.includes("财运")) {
+        return ["下一步怎么做", "最需要注意什么", "怎么落到现实", "给我具体步骤"];
+      }
+      return DEFAULT_FOLLOWUPS;
+    }
+
+    function isCueHeavyPrompt(item = "") {
+      return /你画|图案|牌面|这张牌|抽到|线条|轮廓|心形|花|箭头|房子|波浪|螺旋/.test(item);
+    }
+
+    function chatPromptItems(conversation = [], prompts = []) {
+      const generated = [...prompts, ...conversation]
+        .map((item) => displayText(item, "", 48))
+        .filter(Boolean)
+      const lightGenerated = generated.filter((item) => !isCueHeavyPrompt(item));
+      return [...defaultChatPrompts(), ...lightGenerated, ...generated]
+        .filter((item, index, list) => list.indexOf(item) === index)
+        .slice(0, 4);
+    }
+
+    function renderChatContext(payload = null) {
+      if (!chatContext) return;
+      if (!payload) {
+        chatContext.innerHTML = `
+          <span>本局参考</span>
+          <p>生成解读后，这里会固定显示图案和牌面。</p>
+        `;
+        return;
+      }
+
+      const drawing = payload.drawing || payload.drawing_seen || {};
+      const summary = displayText(drawing.summary || payload.title, "", 120);
+      const symbol = displayText(drawing.symbol, "", 140);
+      const visualMirror = displayText(payload.visual_mirror, "", 160);
+      const symbolLabel = symbolLabelFromText(summary, payload.title, symbol, visualMirror);
+      const topic = currentTopic() || selectedIntent;
+      const cardLine = currentCards.length ? currentCards.map(cardLabel).join(" / ") : "牌面待定";
+
+      chatContext.innerHTML = `
+        <span>本局参考</span>
+        <p><strong>${escapeHTML(topic)}</strong> · ${escapeHTML(symbolLabel || "图案待识别")}</p>
+        <p>${escapeHTML(cardLine)}</p>
+      `;
+    }
+
+    function renderReading(payload, usage, offline) {
+      const cardBlocks = Array.isArray(payload.cards)
+        ? payload.cards.map((item) => {
+          const digest = cardDigest(item);
+          return `
+          <div class="mini-card">
+            <div class="mini-card-head">
+              <div class="mini-card-title">${escapeHTML(digest.card)}</div>
+              <div class="mini-card-position">${escapeHTML(displayText(item.position, "牌位", 24))}</div>
+            </div>
+            <p class="mini-card-note">${escapeHTML(digest.meaning)}</p>
+            <div class="card-breakdown">
+              <div class="card-point"><b>图案连接</b>${escapeHTML(digest.drawing)}</div>
+              <div class="card-point"><b>行动提醒</b>${escapeHTML(digest.reminder || digest.position)}</div>
+            </div>
+          </div>
+        `;
+        }).join("")
+        : "";
+      const drawing = payload.drawing || payload.drawing_seen || {};
+      const drawingEvidence = displayList(drawing.evidence).slice(0, 2);
+      const advice = displayAdviceItems(payload.advice, payload.action ? [payload.action] : []);
+      const conversation = displayList(payload.conversation);
+      const topic = currentTopic() || selectedIntent;
+      const summary = displayText(drawing.summary || payload.title, "我看见了一个正在成形的象征图案。", 220);
+      const symbol = displayText(drawing.symbol, "", 260);
+      const visualMirror = displayText(payload.visual_mirror, "这幅图像先把注意力带回到一个明显的转折点：先看清它，再决定下一步。", 460);
+      const synthesis = displayText(payload.synthesis, "牌面和图案共同提醒：先缩小问题，再用一个小行动验证现实反馈。", 460);
+      const boundary = displayText(payload.gentle_boundary, "把它当作一次象征性反思，而不是事实裁决。", 260);
+      const takeaway = displayText(payload.takeaway || payload.title || synthesis, "这组牌在提醒你：先看清图案里的转折，再把问题缩小成一个可行动的小步骤。", 260);
+      const symbolLabel = symbolLabelFromText(summary, payload.title, symbol, visualMirror);
+
+      readingBody.innerHTML = `
+        <div class="reading-section is-integrated">
+          <h3>综合解读</h3>
+          <div class="reading-bridge">
+            <p>${escapeHTML(takeaway)}</p>
+            <p>围绕${escapeHTML(topic)}，我把你画出的<strong>${escapeHTML(symbolLabel)}</strong>和这次抽到的牌放在一起看：${escapeHTML(visualMirror)}</p>
+            ${drawingEvidence.length ? tagListHTML(drawingEvidence) : ""}
+            <p>${escapeHTML(synthesis)}</p>
+          </div>
+          <div class="card-readings">${cardBlocks}</div>
+        </div>
+        <div class="reading-section is-advice">
+          <h3>建议</h3>
+          <p>把上面的象征解读落到现实里，可以按这个顺序试。重点不是一次解决全部，而是先拿到清晰反馈。</p>
+          ${adviceCardsHTML(advice, conversation, currentCards, topic, symbolLabel)}
+        </div>
+      `;
+
+      lastReading = payload;
+      if (boundaryNote) {
+        boundaryNote.textContent = boundary
+          ? `${boundary} 若画面或解读触发强烈痛苦，请优先联系现实中可信赖的人或当地紧急援助。`
+          : DEFAULT_BOUNDARY;
+      }
+      renderChatContext(payload);
+      setFollowupButtons(chatPromptItems(conversation, payload.followups), false);
+      if (followupInput) followupInput.disabled = false;
+      if (askFollowupBtn) askFollowupBtn.disabled = false;
+      updateUsage(usage, offline);
+    }
+
+    function resetChatStream() {
+      renderChatContext(null);
+      thread.innerHTML = `<div class="chat-empty">可以点上方问题，或在下方输入自己的追问。</div>`;
+    }
+
+    function renderFollowup(payload, focus, usage, offline) {
+      thread.querySelector(".chat-empty")?.remove();
+      const item = document.createElement("div");
+      item.className = "chat-turn";
+      item.innerHTML = `
+        <div class="chat-bubble user">
+          <span>你问</span>
+          <p>${escapeHTML(focus)}</p>
+        </div>
+        <div class="chat-bubble assistant">
+          <span>回答</span>
+          <p>${escapeHTML(displayText(payload.answer, "可以，先把这个问题缩小到今天最能验证的一步。", 520))}</p>
+          <div class="chat-detail"><strong>可以试试：</strong>${escapeHTML(displayText(payload.micro_practice, "把问题缩小成今天可以做的一步。", 180))}</div>
+        </div>
+      `;
+      thread.append(item);
+      thread.scrollTop = thread.scrollHeight;
+      if (Array.isArray(payload.next_questions) && payload.next_questions.length) {
+        setFollowupButtons(chatPromptItems([], payload.next_questions), false);
+      }
+      updateUsage(usage, offline);
+    }
+
+    function updateUsage(usage, offline) {
+      if (offline) {
+        usageText.textContent = "离线演示";
+        costText.textContent = "token: 0";
+        return;
+      }
+
+      const prompt = usage?.prompt_tokens ?? 0;
+      const completion = usage?.completion_tokens ?? 0;
+      const total = usage?.total_tokens ?? prompt + completion;
+      usageText.textContent = `输入 ${prompt} / 输出 ${completion}`;
+      costText.textContent = `token: ${total}`;
+    }
+
+    async function runReading() {
+      if (pickedCards.length < requiredCardCount()) {
+        setStatus(`还需要再选 ${requiredCardCount() - pickedCards.length} 张牌。`);
+        updatePickState();
+        return;
+      }
+
+      const stats = preparedStats || getDrawingStats();
+      if (stats.isBlank) {
+        setStatus("画面还很安静，可以先留下一笔。");
+      }
+
+      readBtn.disabled = true;
+      readBtn.textContent = "解读中";
+      setStatus("正在翻开你选中的牌。");
+      currentCards = selectedCardsWithPositions();
+      renderDeck(currentCards);
+      lastImageData = preparedImageData || exportCanvasForAI();
+      lastDrawingProfile = preparedProfile || drawingProfile(stats);
+      resetChatStream();
+
+      try {
+        const result = await callOpenRouter({ imageData: lastImageData, stats, cards: currentCards, profile: lastDrawingProfile });
+        renderReading(result.payload, result.usage, result.offline);
+        setStatus(result.offline ? "离线解读已生成。" : `AI 解读已生成。模型：${result.model || $("#modelId").value.trim()}`);
+        goStage("reading");
+      } catch (error) {
+        console.error(error);
+        setMode(false);
+        renderReading(offlineReading(stats, currentCards, lastDrawingProfile), null, true);
+        setStatus("在线调用失败，已切换到离线演示。");
+        usageText.textContent = "调用失败";
+        costText.textContent = "查看控制台";
+        goStage("reading");
+      } finally {
+        updatePickState();
+      }
+    }
+
+    async function runFollowup(focus, button = null) {
+      if (!currentCards.length) return;
+      const cleanFocus = String(focus || "").trim();
+      if (!cleanFocus) {
+        setStatus("先输入想继续问的问题。");
+        return;
+      }
+      const stats = getDrawingStats();
+      const profile = lastDrawingProfile || drawingProfile(stats);
+      const oldText = button ? button.textContent : "";
+      if (button) {
+        button.disabled = true;
+        button.textContent = "追问中";
+      }
+      setStatus(`继续追问：${cleanFocus}`);
+
+      try {
+        const result = await callOpenRouter({
+          imageData: lastImageData || exportCanvasForAI(),
+          stats,
+          cards: currentCards,
+          followupFocus: cleanFocus,
+          profile
+        });
+        renderFollowup(result.payload, cleanFocus, result.usage, result.offline);
+        setStatus(result.offline ? "离线追问已生成。" : `AI 追问已生成。模型：${result.model || $("#modelId").value.trim()}`);
+      } catch (error) {
+        console.error(error);
+        const payload = offlineFollowup(cleanFocus, stats, currentCards, profile);
+        renderFollowup(payload, cleanFocus, null, true);
+        setStatus("在线追问失败，已切换到离线演示。");
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = oldText;
+        }
+      }
+    }
+
+    function bindControls() {
+      canvas.addEventListener("pointerdown", startStroke);
+      canvas.addEventListener("pointermove", moveStroke);
+      canvas.addEventListener("pointerup", endStroke);
+      canvas.addEventListener("pointercancel", endStroke);
+      window.addEventListener("resize", () => {
+        window.clearTimeout(window.__tarotResize);
+        window.__tarotResize = window.setTimeout(resizeCanvas, 180);
+      });
+
+      $("#undoBtn").addEventListener("click", undo);
+      $("#redoBtn").addEventListener("click", redo);
+      $("#clearBtn").addEventListener("click", clearCanvas);
+      $("#penBtn").addEventListener("click", () => setTool("pen"));
+      $("#eraserBtn").addEventListener("click", () => setTool("eraser"));
+      $("#brushSize").addEventListener("input", (event) => {
+        brushSize = Number(event.target.value);
+      });
+
+      $$(".swatch").forEach((button) => {
+        button.addEventListener("click", () => {
+          brushColor = button.dataset.color;
+          setTool("pen");
+          $$(".swatch").forEach((item) => item.classList.toggle("is-active", item === button));
+        });
+      });
+
+      $$(".chip[data-intent]").forEach((button) => {
+        button.addEventListener("click", () => {
+          setTopicHelp("例如：转行、复合、考研、买房。");
+          applyTopic(button.dataset.intent);
+        });
+      });
+
+      if (customTopic) {
+        customTopic.addEventListener("focus", () => {
+          customTopicActive = true;
+          applyTopic(normalizeCustomTopic(), { custom: true });
+        });
+        customTopic.addEventListener("input", () => {
+          const topic = normalizeCustomTopic();
+          setTopicHelp(topic ? "已使用自定义方向。" : "请输入 1-10 个字的咨询方向。", !topic);
+          applyTopic(topic, { custom: true });
+        });
+      }
+
+      $$(".segmented button").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedSpread = button.dataset.spread;
+          $$(".segmented button").forEach((item) => item.classList.toggle("is-active", item === button));
+          preparePickDeck(true);
+        });
+      });
+
+      readBtn.addEventListener("click", runReading);
+
+      pickDeckEl.addEventListener("click", (event) => {
+        const button = event.target.closest(".pick-card");
+        if (!button) return;
+        togglePick(Number(button.dataset.pickIndex));
+      });
+
+      $("#startFlowBtn").addEventListener("click", () => goStage("draw"));
+      $("#toCardsBtn").addEventListener("click", () => {
+        if (!validateTopic()) return;
+        if (!canvas.width || !canvas.height) {
+          resizeCanvas();
+        }
+        preparedStats = getDrawingStats();
+        preparedProfile = drawingProfile(preparedStats);
+        preparedImageData = exportCanvasForAI();
+        if (preparedStats.isBlank) {
+          setStatus("也可以从空白开始，但留下一笔会更有代入感。");
+        }
+        preparePickDeck(true);
+        goStage("cards");
+      });
+      $("#clearAndStayBtn").addEventListener("click", clearCanvas);
+      $("#editDrawingBtn").addEventListener("click", () => goStage("draw"));
+      $("#restartBtn").addEventListener("click", resetSession);
+
+      $$("[data-go-stage]").forEach((button) => {
+        button.addEventListener("click", () => goStage(button.dataset.goStage));
+      });
+
+      followups.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-focus]");
+        if (!button || button.disabled) return;
+        runFollowup(button.dataset.focus, button);
+      });
+
+      askFollowupBtn.addEventListener("click", () => {
+        const focus = followupInput.value.trim();
+        runFollowup(focus, askFollowupBtn);
+        if (focus) followupInput.value = "";
+      });
+
+      followupInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        askFollowupBtn.click();
+      });
+
+      $("#rememberKey").addEventListener("change", (event) => {
+        if (!event.target.checked) localStorage.removeItem("tarot.openrouter.key");
+      });
+    }
+
+    function cueForIntent(intent) {
+      if (intent.includes("感情") || intent.includes("恋爱") || intent.includes("复合")) return "画出你们之间的距离：靠近、拉开、缠绕或停住。";
+      if (intent.includes("婚姻") || intent.includes("家庭")) return "画出关系里的边界、责任、牵挂，或一句没有说出口的话。";
+      if (intent.includes("事业") || intent.includes("工作") || intent.includes("转行")) return "画出你想推进的方向，以及挡在前面的阻力。";
+      if (intent.includes("学业") || intent.includes("考试") || intent.includes("考研")) return "画出目标、压力和注意力分别落在哪里。";
+      if (intent.includes("财运") || intent.includes("钱") || intent.includes("买房")) return "画出钱的流动、缺口、储存，或你想要的安全感。";
+      if (intent.includes("人际") || intent.includes("朋友") || intent.includes("同事")) return "画出你和他人的距离，哪里想靠近，哪里需要边界。";
+      if (intent.includes("自我") || intent.includes("成长")) return "画出最近想长出来、想放下，或正在修复的部分。";
+      if (intent.includes("未来") || intent.includes("选择")) return "把两个方向画出来，中间留给犹豫。";
+      return "闭上眼想三秒：它像线、雾、门、结，还是一个空白？把第一反应留在这里。";
+    }
+
+    function setTool(tool) {
+      activeTool = tool;
+      $("#penBtn").classList.toggle("is-active", tool === "pen");
+      $("#eraserBtn").classList.toggle("is-active", tool === "eraser");
+    }
+
+    function hydrateSettings() {
+      const savedKey = localStorage.getItem("tarot.openrouter.key");
+      const savedModel = localStorage.getItem("tarot.openrouter.model");
+      if (savedKey) {
+        $("#apiKey").value = savedKey;
+        $("#rememberKey").checked = true;
+        setMode(true);
+      }
+      $("#modelId").value = savedModel || DEFAULT_MODEL;
+    }
+
+    hydrateSettings();
+    bindControls();
+    setTool("pen");
+    applyTopic("感情关系");
+    goStage("draw");
+  </script>
+</body>
+</html>

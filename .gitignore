@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+dist/
+build/
+*.log
+.DS_Store
+
+# Local Codex/browser test artifacts
+.agents/
+work/
+outputs/
+
+# Local editor/system files
+Thumbs.db
+desktop.ini
